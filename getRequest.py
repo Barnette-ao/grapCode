@@ -7,7 +7,7 @@ def simple_get_request(url):
         
         # 检查响应状态码
         if response.status_code == 200:
-            print("请求成功！")
+            # print("请求成功！")
             print(f"响应内容:\n{response.json()}")
         else:
             print(f"请求失败，状态码: {response.status_code}")

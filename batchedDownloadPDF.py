@@ -2,6 +2,8 @@ import json
 import simple_download_pdf
 import getContentList
 import postRequest
+import helpFunc
+import argparse
 
 # API_URL_RESOURCE_ITEM: 单个资源的信息API地址
 # API_URL_RESOURCE_LIST: 资源列表API地址
@@ -9,6 +11,17 @@ API_URL_RESOURCE_ITEM = "https://ht.axuex.top/api/Resource/resdetail?from_id="  
 
 API_URL_RESOURCE_LIST = "https://ht.axuex.top/api/Resource/resource?from_id="  # 示例 API
 
+def is_latest_than(threshold_ctime,resource):
+    threshold_timestamp = helpFunc.datetime_to_timestamp(threshold_ctime)
+
+    result = helpFunc.compare_timestamps(
+        threshold_timestamp, 
+        helpFunc.datetime_to_timestamp(resource['ctime'])
+    )
+
+    # 如果result等于-1，说明该pdf的创建时间比阈值时间要晚，没有下载过
+    return result == -1
+        
 
 def set_queryData_of_pdf(resource,token):
     return dict(
@@ -16,15 +29,7 @@ def set_queryData_of_pdf(resource,token):
         token = token,
         plat_form = "mp-weixin"
     )
-        
-# print(postRequest(postUrl, queryData))
-def get_resource_list(postUrl, queryData):
-    response = postRequest.postRequest(postUrl, queryData)
-    if response['code'] == 200:
-        print("请求成功！")
-        # print(json.dumps(response, indent=4, ensure_ascii=False))
-        return response['data']['list']
-
+    
 
 def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
     response = postRequest.postRequest(postUrl, queryData)
@@ -45,20 +50,8 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
         save_path = simple_download_pdf.build_save_path(**params)
         simple_download_pdf.simple_download_pdf(url, save_path)
 
-def build_query_params(sort_id, extra_params=None):
-        """构建资源查询参数"""
-        params = {
-            'sort_id': sort_id,
-            'page': 1,
-            'limit': 9999,
-            'type': 0,
-            'plat_form': "mp-weixin"
-        }
-        if extra_params:
-            params.update(extra_params)
-        return params
 
-def download_resources_by_category(content_list, auth_token):
+def download_resources_by_category(content_list, auth_token, threshold_ctime):
      """
      根据分类内容列表下载所有资源
     
@@ -87,13 +80,23 @@ def download_resources_by_category(content_list, auth_token):
                 } if is_three_level else None
                 
                 # 获取资源列表
-                resource_list = get_resource_list(
+                resource_list = helpFunc.get_resource_list(
                     API_URL_RESOURCE_LIST,
-                    queryData=build_query_params(item['sort_id'], extra_params)
+                    queryData=helpFunc.build_query_params(item['sort_id'], extra_params)
                 )
+
+                # 跳过resource_list为None的情况   
+                if not resource_list:
+                    continue
 
                 # 下载每个资源
                 for resource in resource_list:
+                    # 下载之前，先根据pdf的创建事件判断筛选比该阈值要晚的时间创建的pdf，
+                    # 假设阈值时间是2025-07-11 00:00:00
+                    # 如果该pdf的创建时间比该阈值要早，则跳过下载
+                    if not is_latest_than(threshold_ctime, resource):
+                        continue
+
                     pdf_query = set_queryData_of_pdf(resource, auth_token)
                     
                     if is_three_level:
@@ -112,49 +115,61 @@ def download_resources_by_category(content_list, auth_token):
                             item['title']  # 二级分类名
                         )
 
-if __name__ == "__main__":
+
+def batch_download_resources(auth_token, threshold_ctime):
     contentlist = getContentList.normalize_content_list()
-    # print(len(contentlist))
-    # download_resources_by_category(
-    #     content_list = contentlist, 
-    #     auth_token = "386c0d996d9bee266b55f4aa938e374d"
-    # )
 
-    for content in contentlist:
-        if(len(content['categoraylist']) == 1):
-            for firstcategory, itemList in content['categoraylist'].items():
-                for item in itemList:
-                    sort_id, secondcategory = item['sort_id'], item['title']
-                    resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
-                        sort_id = sort_id,
-                        page = 1,
-                        limit = 9999,
-                        type = 0,
-                        plat_form = "mp-weixin"
-                    ))
-                    # print(resource_list)
-                    for resource in resource_list:
-                        pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
-                        # print(pdf_queryData)
-                        download(API_URL_RESOURCE_ITEM, pdf_queryData, firstcategory, secondcategory)
+    download_resources_by_category(
+        content_list = contentlist, 
+        auth_token = auth_token,
+        threshold_ctime = threshold_ctime
+    )
 
-        elif(len(content['categoraylist']) > 1):
-            for secondcategory, itemList in content['categoraylist'].items():
-                for item in itemList:
-                    sort_id, thirdcategory = item['sort_id'], item['title']
-                    resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
-                        sort_id = sort_id,
-                        page = 1,
-                        limit = 9999,
-                        order = 0,
-                        keys = "",
-                        edition = 0,
-                        type = 0,
-                        plat_form = "mp-weixin"
-                    ))
-                    for resource in resource_list:
-                        pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
-                        download(API_URL_RESOURCE_ITEM, pdf_queryData, content['title'], secondcategory, thirdcategory)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="批量下载PDF资源")
+    parser.add_argument("--token",required=True, type=str, help="认证token")
+    parser.add_argument("--time", required=True, type=str, help="时间阈值，格式: 'YYYY-MM-DD HH:MM:SS'")
+    args = parser.parse_args()
+
+    # auth_token = "386c0d996d9bee266b55f4aa938e374d"
+    # threshold_ctime = '2025-07-11 00:00:00'
+    batch_download_resources(args.token, args.time)
+
+    # for content in contentlist:
+    #     if(len(content['categoraylist']) == 1):
+    #         for firstcategory, itemList in content['categoraylist'].items():
+    #             for item in itemList:
+    #                 sort_id, secondcategory = item['sort_id'], item['title']
+    #                 resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
+    #                     sort_id = sort_id,
+    #                     page = 1,
+    #                     limit = 9999,
+    #                     type = 0,
+    #                     plat_form = "mp-weixin"
+    #                 ))
+    #                 # print(resource_list)
+    #                 for resource in resource_list:
+    #                     pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
+    #                     # print(pdf_queryData)
+    #                     download(API_URL_RESOURCE_ITEM, pdf_queryData, firstcategory, secondcategory)
+
+    #     elif(len(content['categoraylist']) > 1):
+    #         for secondcategory, itemList in content['categoraylist'].items():
+    #             for item in itemList:
+    #                 sort_id, thirdcategory = item['sort_id'], item['title']
+    #                 resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
+    #                     sort_id = sort_id,
+    #                     page = 1,
+    #                     limit = 9999,
+    #                     order = 0,
+    #                     keys = "",
+    #                     edition = 0,
+    #                     type = 0,
+    #                     plat_form = "mp-weixin"
+    #                 ))
+    #                 for resource in resource_list:
+    #                     pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
+    #                     download(API_URL_RESOURCE_ITEM, pdf_queryData, content['title'], secondcategory, thirdcategory)
     # print(lens)
 
     # queryData = set_queryData_of_pdf(resouce,"386c0d996d9bee266b55f4aa938e374d")

@@ -38,7 +38,7 @@ def getContentList():
         
         # 检查请求是否成功（HTTP 状态码 200）
         if response.status_code == 200:
-            print("请求成功！")
+            # print("请求成功！")
             for index, list_item in enumerate(response.json()["data"]["list"]):
                 result = transform_data(list_item)
                 contentList.append(result)
