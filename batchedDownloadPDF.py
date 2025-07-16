@@ -4,6 +4,10 @@ import getContentList
 import postRequest
 import helpFunc
 import argparse
+import os
+import getThresholdTime
+from datetime import datetime, timedelta
+from logger import log_exit_time
 
 # API_URL_RESOURCE_ITEM: 单个资源的信息API地址
 # API_URL_RESOURCE_LIST: 资源列表API地址
@@ -29,14 +33,15 @@ def set_queryData_of_pdf(resource,token):
         token = token,
         plat_form = "mp-weixin"
     )
-    
 
 def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
     response = postRequest.postRequest(postUrl, queryData)
     # print(json.dumps(response, indent=4, ensure_ascii=False))
     if response['code'] == 200:
         url = response['data']['link']
-        filename = response['data']['title'] + '.pdf'
+        file_ext = os.path.splitext(url)[1] # 获取文件扩展名 例如 .pdf
+
+        filename = f"{response['data']['title']}{file_ext}"
 
         params = {
             "base_dir": "先锋学霸资料",
@@ -115,7 +120,8 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
                             item['title']  # 二级分类名
                         )
 
-
+       
+@log_exit_time
 def batch_download_resources(auth_token, threshold_ctime):
     contentlist = getContentList.normalize_content_list()
 
@@ -125,53 +131,20 @@ def batch_download_resources(auth_token, threshold_ctime):
         threshold_ctime = threshold_ctime
     )
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="批量下载PDF资源")
     parser.add_argument("--token",required=True, type=str, help="认证token")
-    parser.add_argument("--time", required=True, type=str, help="时间阈值，格式: 'YYYY-MM-DD HH:MM:SS'")
     args = parser.parse_args()
 
-    # auth_token = "386c0d996d9bee266b55f4aa938e374d"
-    # threshold_ctime = '2025-07-11 00:00:00'
-    batch_download_resources(args.token, args.time)
+    threshold_ctime = getThresholdTime.get_threshold_time()
+    print(f"时间阈值: {threshold_ctime}")
 
-    # for content in contentlist:
-    #     if(len(content['categoraylist']) == 1):
-    #         for firstcategory, itemList in content['categoraylist'].items():
-    #             for item in itemList:
-    #                 sort_id, secondcategory = item['sort_id'], item['title']
-    #                 resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
-    #                     sort_id = sort_id,
-    #                     page = 1,
-    #                     limit = 9999,
-    #                     type = 0,
-    #                     plat_form = "mp-weixin"
-    #                 ))
-    #                 # print(resource_list)
-    #                 for resource in resource_list:
-    #                     pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
-    #                     # print(pdf_queryData)
-    #                     download(API_URL_RESOURCE_ITEM, pdf_queryData, firstcategory, secondcategory)
+    try:
+        batch_download_resources(args.token, threshold_ctime)
+    except Exception as e:
+        print(f"程序运行出错: {e}")
+        raise
+    
 
-    #     elif(len(content['categoraylist']) > 1):
-    #         for secondcategory, itemList in content['categoraylist'].items():
-    #             for item in itemList:
-    #                 sort_id, thirdcategory = item['sort_id'], item['title']
-    #                 resource_list = get_resource_list(API_URL_RESOURCE_LIST, dict(
-    #                     sort_id = sort_id,
-    #                     page = 1,
-    #                     limit = 9999,
-    #                     order = 0,
-    #                     keys = "",
-    #                     edition = 0,
-    #                     type = 0,
-    #                     plat_form = "mp-weixin"
-    #                 ))
-    #                 for resource in resource_list:
-    #                     pdf_queryData = set_queryData_of_pdf(resource,"386c0d996d9bee266b55f4aa938e374d")
-    #                     download(API_URL_RESOURCE_ITEM, pdf_queryData, content['title'], secondcategory, thirdcategory)
-    # print(lens)
-
-    # queryData = set_queryData_of_pdf(resouce,"386c0d996d9bee266b55f4aa938e374d")
-
-    # download(postUrl, queryData3, "一年级上册", "语文", "词句专项")
+   
