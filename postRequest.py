@@ -78,15 +78,7 @@ def test_download_single_pdf():
     simple_download_pdf.simple_download_pdf(url, save_path)
 
 
-def is_exist_in_gongwenwang(cookie_value,queryData):
-    resource = postRequest_with_cookie(
-        postUrl= "https://wx.06179.com/article/article/init.html",
-        cookie_value = cookie_value, 
-        queryData = queryData 
-    )
-    print("请求成功",json.dumps(resource, indent=4, ensure_ascii=False))
-    if resource["status"] == 200:
-        return len(resource["data"]) == 0
+
 
 if __name__ == "__main__":
    print(is_exist_in_gongwenwang(

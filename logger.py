@@ -24,5 +24,6 @@ def log_exit_time(command_func):
             SHOULD_LOG = False
     return wrapper
 
+
 # 注册信号处理（只需执行一次）
 signal.signal(signal.SIGINT, lambda s,f: sys.exit(1))

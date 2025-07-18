@@ -3,6 +3,7 @@ import json
 from datetime import datetime
 from bs4 import BeautifulSoup
 import re
+from datetime import datetime, timedelta
 
 
 def build_query_params(sort_id, extra_params=None):
@@ -49,7 +50,7 @@ def extract_links_bs4(html):
         for a in soup.find_all("a", attrs={"title": True, "href": True})
     ]
 
-def extract_page_number_bs4(html: str, default: int = 0) -> int:
+def extract_page_number_bs4(html: str, default: int = 1) -> int:
     """
     用BeautifulSoup提取最大页码
     :param html: 网页源码
@@ -58,6 +59,9 @@ def extract_page_number_bs4(html: str, default: int = 0) -> int:
     """
     soup = BeautifulSoup(html, 'html.parser')
     page_box = soup.find('div', class_='page')
+    
+    # print("html",html)
+    # print("page_box",page_box)
     
     if not page_box:
         return default
@@ -81,7 +85,7 @@ def extract_page_number_bs4(html: str, default: int = 0) -> int:
     return max(page_numbers)    
 
 def extract_p_bs4(html):
-    """用BeautifulSoup提取所有p类文本"""
+    """用BeautifulSoup提取所有p类文本和图片"""
     soup = BeautifulSoup(html, 'html.parser')
     content_box = soup.find('div', class_='content-box')
     p_tags = []
@@ -114,3 +118,67 @@ def process_html_to_links(html):
      完整处理流程：解析HTML → 去重链接
     """
     return get_unique_links_list(extract_links_bs4(html))
+
+
+def extra_title(pattern,text):
+    match = re.search(pattern, text)
+    return match.group(1) if match else None
+
+def extra_doc_title(text):
+    pattern = r"\d+：(.*)"  # \d+ 匹配数字，：匹配冒号，(.*) 匹配内容
+    return extra_title(pattern,text)
+
+def isDoc(text):
+    return not "ppt" in text.lower()
+
+def get_article_title(text,isWithExt = True):
+    """
+    过滤不是doc的文章比如ppt或者excel,只提取doc类的文章标题：
+    """
+    # 确定文件扩展名
+    file_ext = ".docx"
+    # 提取原始标题,doc标题
+    doc_title = extra_doc_title(text)
+    
+    # 如果isWithExt为False，不拼接扩展名，直接返回标题
+    if not isWithExt:
+        return f"{doc_title}"
+
+    # 如果isWithExt为True，拼接扩展名 返回最终标题
+    return f"{doc_title}{file_ext}"
+
+def generate_date_range(start_date_str, end_date_str):
+    """
+    生成两个日期之间的所有日期（包含起始和结束日期）
+    
+    参数:
+        start_date_str: 起始日期字符串 (格式: YYYYMMDD)
+        end_date_str: 结束日期字符串 (格式: YYYYMMDD)
+        
+    返回:
+        List[str]: 日期字符串列表 (格式: YYYYMMDD)
+    """
+    # 转换字符串为日期对象
+    start_date = datetime.strptime(start_date_str, "%Y%m%d")
+    end_date = datetime.strptime(end_date_str, "%Y%m%d")
+    
+    # 确保起始日期不大于结束日期
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+    
+    # 计算总天数差
+    delta = end_date - start_date
+    date_list = []
+    
+    # 生成日期序列
+    for i in range(delta.days + 1):
+        current_date = start_date + timedelta(days=i)
+        date_list.append(current_date.strftime("%Y%m%d"))
+    
+    return date_list
+
+
+
+
+
+

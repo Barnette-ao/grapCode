@@ -47,12 +47,13 @@ def get_midnight(time):
 
 def get_threshold_time(
     log_file: str = "program_interrupt.log",
-    default_time: str = "2025-07-14 00:00:00"
+    default_time: str = "2025-07-14 00:00:00",
+    is_gwsxwk = False
 ) -> str:
     """
     获取时间阈值，优先级：
     1. 从日志文件提取最后记录时间
-    2. 使用前一天午夜时间
+    2. 使用当天午夜时间或前一天时间
     3. 使用默认时间
     
     Args:
@@ -64,20 +65,26 @@ def get_threshold_time(
     """
     # 1. 检查日志文件是否存在
     if not os.path.exists(log_file):
-        return default_time
+        return default_time if not is_gwsxwk else (datetime.strptime(default_time, "%Y-%m-%d %H:%M:%S") + timedelta(days=1)).strftime("%Y%m%d")
     
     # 2. 尝试从日志提取最后时间
     try:
         threshold_time = extract_last_timestamp(log_file)
         if threshold_time:
-            return get_midnight(timestamp)
+            return get_midnight(threshold_time) if not is_gwsxwk else (datetime.strptime(threshold_time, "%Y-%m-%d %H:%M:%S") + timedelta(days=1)).strftime("%Y%m%d")
     except Exception:
-        pass
+        print(f"读取日志失败: {e}")  # 打印错误信息但继续执行
+
+    # 3. 使用前一天午夜时间
+    return get_midnight(datetime.now()) if not is_gwsxwk else (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
     
-    # 3. 使用当天午夜时间
-    return get_midnight(datetime.now())
+
+def get_date_of_today():
+    return datetime.now().strftime("%Y%m%d")
 
 
 # 主程序逻辑
 if __name__ == "__main__":
+   print(get_threshold_time(is_gwsxwk=True))
    print(get_threshold_time())
+   print(get_date_of_today())

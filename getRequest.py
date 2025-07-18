@@ -1,5 +1,5 @@
 import requests
-
+from selenium import webdriver
 
 def simple_get_request(url):
     try:
@@ -48,6 +48,31 @@ def simple_get_request_with_cookie(url, cookie_value):
     except requests.exceptions.RequestException as e:
         print(f"请求异常: {e}")
 
+
+def get_cookie_string(date):
+    target_url = f"https://www.gwsxwk.cn/index/search/index.html?keyword={date}&search_type=10"
+    driver = webdriver.Chrome()
+    driver.get(target_url)
+    
+    # 获取所有 Cookie 字典
+    cookies = driver.get_cookies()
+    driver.quit()
+    
+    # 转换为 key=value 字符串
+    cookie_str = "; ".join([f"{c['name']}={c['value']}" for c in cookies])
+    return cookie_str
+
+
+
+
+if __name__ == "__main__":
+    # 目标URL（包含参数）
+    target_url = "https://www.gwsxwk.cn/index/search/index.html?keyword=20250714&search_type=10"
+    
+    cookie_string = get_cookie_string(target_url)
+    print("Cookie 字符串:", cookie_string)
+
+    
 
 
 
