@@ -51,11 +51,11 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
 
         filename = f"{response['data']['title']}{file_ext}"
 
-        formatted_threshold_ctime = datetime.strptime(get_threshold_time(), "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
+        # formatted_threshold_ctime = datetime.strptime(get_threshold_time(), "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
 
-        formatted_today_date = datetime.now().strftime("%Y%m%d")
+        # formatted_today_date = datetime.now().strftime("%Y%m%d")
 
-        base_dir = f"{formatted_threshold_ctime}--{formatted_today_date}"
+        base_dir = f"先锋学霸资料"
 
         params = {
             "base_dir": base_dir,

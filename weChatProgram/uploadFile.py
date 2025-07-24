@@ -3,11 +3,28 @@ sys.path.append('..')
 
 import os
 import mimetypes
+import numpy as np
 
 from libs.postRequest import postRequest_with_formdata 
 from form_data import FormData
-from util import get_categoryId_with_parentId,get_category_data 
+from util import (
+    get_categoryId_with_parentId,
+    get_category_data,
+    build_tree,print_tree,
+    get_subfolder_paths
+)
+import getContentList 
+import json
+from tqdm import tqdm
 
+def split_numpy_array(arr, chunk_size=50):
+    """
+    Numpy数组分块（避免内存复制）
+    :param arr: numpy数组
+    :param chunk_size: 每份大小
+    :return: 数组视图列表
+    """
+    return np.array_split(arr, np.ceil(len(arr)/chunk_size))
 
 
 def collect_pdf_files(base_dir):
@@ -19,6 +36,10 @@ def collect_pdf_files(base_dir):
     # 递归扫描函数
     def _scan_directory(current_dir):
         for entry in os.listdir(current_dir):
+            # 忽略幼小衔接下可能存在的知识汇总和专项练习目录
+            if os.path.basename(current_dir) == "幼小衔接" and entry in ['知识汇总','专项练习']:
+                continue
+
             full_path = os.path.normpath(os.path.join(current_dir, entry))
             
             if os.path.isdir(full_path):
@@ -44,7 +65,6 @@ def get_files_data(files_path_list):
         return mime_type or 'application/octet-stream'  # 默认二进制流
 
     files = []
-    files_path_list
     for file_path in files_path_list:
         if not os.path.exists(file_path):
             print(f"文件不存在: {file_path}")
@@ -62,21 +82,38 @@ def get_files_data(files_path_list):
 
 
 if __name__ == "__main__":
-    base_dir = "先锋学霸资料\\幼小衔接"
-    all_file_path = collect_pdf_files(base_dir)
-    print(all_file_path)
+    root_dir = "先锋学霸资料"
+    paths = get_subfolder_paths(root_dir)
+    for path in paths:
+        print(path)
+        all_file_path = collect_pdf_files(path)
+        chunk_list = [len(chunk.tolist()) for chunk in split_numpy_array(all_file_path)]  # 每个子数组转Python列表
+        for chunk in chunk_list:
+            print(chunk)
+            
+            
 
-    category_data = get_category_data()
-    [categoryId, parentId, categoryName] = get_categoryId_with_parentId(all_file_path[0], category_data)
+    # cookie_value = "wenku-session-id=7dfd9d80-58fa-4468-aa4d-79d4c01dc273"
+    # root_dir = "先锋学霸资料"
+    # paths = get_subfolder_paths(root_dir)
+    # # print(paths)
+    # for path in tqdm(paths, desc="处理文件夹"):
+    #     all_file_path = collect_pdf_files(path)
+    #     files = get_files_data(all_file_path)
+
+    #     category_data = get_category_data(cookie_value)
+    #     if not get_categoryId_with_parentId(all_file_path[0],category_data):
+    #         print("获取categoryId和parentId失败")
+    #         continue
+
+            
+    #     [categoryId, parentId, categoryName] = get_categoryId_with_parentId(all_file_path[0],category_data)
+
+    #     response = postRequest_with_formdata(
+    #         postUrl="http://211.154.30.100:8222/base/resource/uploadMutiAPI2",
+    #         cookie_value=cookie_value,
+    #         files=files,
+    #         form_data=FormData(categoryId, parentId, categoryName).to_dict()
+    #     )
     
-    print(categoryId, parentId, categoryName)
-    # files = get_files_data(all_file_path)
-
-    # response = postRequest_with_formdata(
-    #     postUrl="http://211.154.30.100:8222/base/resource/uploadMutiAPI2",
-    #     cookie_value="wenku-session-id=40b76a5b-5c47-4eb2-bb27-44a4b8d6653c",
-    #     files=files,
-    #     form_data=FormData(categoryId, parentId, categoryName).to_dict()
-    # )
-
-    # print(response)
+    #     print(response)
