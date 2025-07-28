@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 
 
+
 def build_query_params(sort_id, extra_params=None):
         """构建资源查询参数"""
         params = {
@@ -226,5 +227,41 @@ def load_failed_params():
             failure_time = datetime.fromisoformat(data["failure_time"])
             if datetime.now() - failure_time < timedelta(minutes=10):
                 return data["last_failed_params"]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None
+
+
+ARTICLE_HREF_CACHE_FILE = "article_href_cache.json"
+def save_all_article_links(article_links,date):
+    """保存触发空数组的参数,格式如下：
+    {
+        "20230101": [{'title':'sada', 'href':'/index1.html'}, {'title':'sada', 'href':'/index2.html'}],
+        "20230102": [{'title':'sada', 'href':'/index3.html'}],
+        "20230103": [{'title':'sada', 'href':'/index4.html'}]
+    }
+    """
+    # 1. 读取已有数据（如果文件存在）
+    existing_data = {}
+    if os.path.exists(ARTICLE_HREF_CACHE_FILE):
+        with open(ARTICLE_HREF_CACHE_FILE, 'r') as f:
+            existing_data = json.load(f)
+    
+    # 2. 更新数据（合并旧数据和新数据）
+    existing_data[date] = article_links  # 按日期作为键存储
+    
+    # 3. 写回文件
+    with open(ARTICLE_HREF_CACHE_FILE, 'w') as f:
+        json.dump(existing_data, f, indent=2)  # indent美化格式
+
+def load_article_links_by(date):
+    """加载上次失败的参数"""
+    try:
+        with open(ARTICLE_HREF_CACHE_FILE) as f:
+            data = json.load(f)
+            if data[date]:
+                return data[date]
+            else:
+                print("缓存副本中没有存储该日期的所有文章链接")
+                return None
     except (FileNotFoundError, json.JSONDecodeError):
         return None

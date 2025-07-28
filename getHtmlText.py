@@ -6,7 +6,9 @@ from helpFunc import (
     extract_p_bs4,
     get_article_title,
     generate_date_range,
-    extract_keyword_match_number_bs4
+    extract_keyword_match_number_bs4,
+    save_all_article_links,
+    load_article_links_by,
 )
 from getThresholdTime import get_threshold_time, get_date_of_today
 from logger import log_exit_time
@@ -18,6 +20,8 @@ import argparse
 import re
 from datetime import datetime
 from urllib.parse import quote
+import pydash as _
+
 
 BASE_URL = "https://www.gwsxwk.cn"
 
@@ -55,6 +59,43 @@ def get_article_links(html_text):
         )
         # print(filtered_unique_links)
         return filtered_unique_links
+
+
+def get_all_article_links(date, cookie_str):
+    """
+    获取某一日所有的文章链接
+    """
+    def safe_extend(target_list, source_items):
+        """安全扩展列表，自动过滤空值和非可迭代对象"""
+        if source_items and isinstance(source_items, (list, tuple, set, frozenset)):
+            target_list.extend(source_items)
+
+    all_article_links = []
+
+    # 1.首先访问第一页的文章情况
+    html_text = get_html_text(date, cookie_str, 1)
+    if not html_text:
+        print(f"[ERROR] 无法获取页面内容: {date} - {cookie_str}")
+        return None
+    
+    # 2. 提取最大页数
+    max_page = get_max_page(html_text)
+
+    # 3. 获取第一页的文章链接文章链接,并安全加入all_article_links
+    safe_extend(all_article_links, get_article_links(html_text))
+
+    # 4. page > 1 的情况,分别遍历每一页，找到每一页的文章链接并安全加入all_article_links
+    if max_page > 1:
+        for page in range(2, max_page + 1):
+            html_text = get_html_text(date, cookie_str, page)
+            if not html_text:
+                print(f"[ERROR] 无法获取页面内容: {date} - {cookie_str}")
+                return None
+
+            safe_extend(all_article_links, get_article_links(html_text))
+
+    return all_article_links
+
 
 
 def get_article_link(href):
@@ -95,11 +136,7 @@ def request_article_html(article_link, cookie_str, date):
 
 
 
-
 def download_article_content(text_objects):
-    if text_objects == "访问过于频繁":
-        print(f"[ERROR] 访问过于频繁: {article_link_href}")
-    
     # 4. 保存文件
     output_path = f"{date}/{text_objects[0]['text']}.docx"  # 使用第二段作为文件名
     try:
@@ -113,7 +150,7 @@ def is_exist_in_gongwenwang(keyword, gongwen_cookie_value):
     """
     检查文章是否已存在于公网网
     """
-    # 1. 构建请求参数
+    # 1. 构建请求参数，将关键词进行URL编码
     print("keyword",keyword)
     q_param = quote(keyword)
 
@@ -135,48 +172,67 @@ def is_not_need_download(article_link, date, gongwen_cookie):
         print(f"文件不是doc类型，不允许下载。")
         return True
 
-    title_with_ext = get_article_title(article_link['title'])
-    filepath = f"{date}/{title_with_ext}"
     
+    # get_article_title(article_link['title'])会返回不带有扩展名的文件名
     title = get_article_title(article_link['title'], False)
+    # 过滤掉title是""，空字符串的情况
     if not title:
         print(f"[ERROR] 无法解析文章标题: {article_link['title']}")
         return True
     
+
+    # get_article_title(article_link['title'])会返回带有扩展名的文件名
+    filepath = f"{date}/{get_article_title(article_link['title'])}"
     if os.path.exists(filepath):
         print(f"文件已下载，且不允许覆盖。")
         return True
+
     elif is_exist_in_gongwenwang(
             keyword = title,
             gongwen_cookie_value = gongwen_cookie
          ):
          print(f"文件已上传，且不允许覆盖。")
          return True
-    else:
-        return False
+    
+    return False
 
 def download_article_by_date(gwsxwk_cookie_str, date, gongwen_cookie):
-    # 1. 获取最大页数
-    max_page = get_max_page(date, gwsxwk_cookie_str)
-    print("max_page",max_page)
+    # 如果缓存中已经存在该日期的article_links，则直接读取缓存中的article_links
+    # 如果缓存中不存在该日期的article_links，则从思享公文网获取所有article_links并保存到缓存中   
+    if not load_article_links_by(date):
+        # 1. 获取思享公文网上某天所有页的article_links
+        article_links = get_all_article_links(date, gwsxwk_cookie_str)
+        # 2. 备份一份所有文章链接，便于访问过于频繁之后继续读取
+        save_all_article_links(article_links, date)
+    else:
+        article_links = load_article_links_by(date)
 
-    for page in range(1, max_page + 1):
-        print(f"----{date}-----{page}-----")
-        # 2. 获取每一页文章链接
-        article_links = get_article_links(date, page, gwsxwk_cookie_str)
 
-        # 3. 遍历文章
-        for article_link in article_links:
-            
-            # 检查文件是否需要下载
-            if is_not_need_download(article_link, date, gongwen_cookie):
-                continue
+    # 3. 遍历文章
+    for article_link in article_links:
+        
+        # 检查文件是否需要下载
+        if is_not_need_download(article_link, date, gongwen_cookie):
+            continue
 
-            # 4. 构建完整URL
-            article_link_href = get_article_link(article_link["href"])
-            
-            # 5. 下载文章
-            dowbload_article_content(article_link_href, gwsxwk_cookie_str, date)
+        # 4. 请求文章html内容
+        text_objects = request_article_html(article_link, gwsxwk_cookie_str, date)
+
+        # 5. 如果text_objects访问过于频繁
+        if text_objects == "访问过于频繁":
+            print(f"[ERROR] 访问过于频繁: {article_link_href}")
+            # 利用pydash库查找当前article_link在article_links中的索引
+            index = _.find_index(article_links, article_link)
+            # 从article_links中获取当前article_link及其之后的所有元素
+            article_links = article_links[index:]
+            # 修改缓存副本中对应的date的article_links
+            save_all_article_href(article_links, date)
+
+            # 将
+
+            # 退出程序
+            print("程序已退出")
+            return
         
 
     
