@@ -1,6 +1,5 @@
 import postRequest
 import json
-from datetime import datetime
 from bs4 import BeautifulSoup
 import re
 from datetime import datetime, timedelta
@@ -22,6 +21,9 @@ def build_query_params(sort_id, extra_params=None):
 
 def get_resource_list(postUrl, queryData):
     response = postRequest.postRequest(postUrl, queryData)
+    if not response:
+        print("请求失败！")
+        return None
     if response['code'] == 200:
         # print("请求成功！")
         # print(json.dumps(response['data']['list'], indent=4, ensure_ascii=False))
@@ -50,6 +52,27 @@ def extract_links_bs4(html):
         for a in soup.find_all("a", attrs={"title": True, "href": True})
     ]
 
+def extract_keyword_match_number_bs4(html: str) -> int:
+    """
+    用BeautifulSoup提取最大页码
+    :param html: 网页源码
+    :param default: 默认值
+    :return: 关键词匹配数
+    """
+    soup = BeautifulSoup(html, 'html.parser')
+    search_bar_box = soup.find('div', class_='so_bar')
+    if not search_bar_box:
+        print("未找到搜索结果")
+        print("html",html)
+        
+
+    # 2. 提取b标签的内容
+    for b in search_bar_box.find_all('b'):
+        # print(b)
+        match_number = b.get_text(strip=True)
+    # 数字可能是4,626，所以需要将逗号替换为空字符串的方式去掉，然后转换为int类型    
+    return int(match_number.replace(",", ""))
+
 def extract_page_number_bs4(html: str, default: int = 1) -> int:
     """
     用BeautifulSoup提取最大页码
@@ -60,8 +83,8 @@ def extract_page_number_bs4(html: str, default: int = 1) -> int:
     soup = BeautifulSoup(html, 'html.parser')
     page_box = soup.find('div', class_='page')
     
-    # print("html",html)
-    # print("page_box",page_box)
+    print("html",html)
+    print("page_box",page_box)
     
     if not page_box:
         return default
@@ -87,6 +110,12 @@ def extract_page_number_bs4(html: str, default: int = 1) -> int:
 def extract_p_bs4(html):
     """用BeautifulSoup提取所有p类文本和图片"""
     soup = BeautifulSoup(html, 'html.parser')
+
+    # 查找是否存在'访问过于频繁'的字符串
+    text = soup.get_text(" ", strip=True)
+    if '访问过于频繁' in text:
+        return "访问过于频繁"
+
     content_box = soup.find('div', class_='content-box')
     p_tags = []
     
@@ -99,7 +128,7 @@ def extract_p_bs4(html):
             "attrs": dict(p.attrs)  # 获取所有属性转为字典
         })
     
-    return p_tags
+    return [item for item in p_tags if item['text'].strip()] # 过滤掉text为空字符串的字典元素
 
 def get_unique_links_list(matches):
     """去重链接列表（基于title和href）"""
@@ -179,6 +208,23 @@ def generate_date_range(start_date_str, end_date_str):
 
 
 
+PARAMS_CACHE_FILE = "request_cache.json"
+def save_failed_params(params):
+    """保存触发空数组的参数"""
+    with open(PARAMS_CACHE_FILE, 'w') as f:
+        json.dump({
+            "last_failed_params": params,
+            "failure_time": datetime.now().isoformat()
+        }, f)
 
-
-
+def load_failed_params():
+    """加载上次失败的参数"""
+    try:
+        with open(PARAMS_CACHE_FILE) as f:
+            data = json.load(f)
+            # 检查是否已过冷却期（10分钟）
+            failure_time = datetime.fromisoformat(data["failure_time"])
+            if datetime.now() - failure_time < timedelta(minutes=10):
+                return data["last_failed_params"]
+    except (FileNotFoundError, json.JSONDecodeError):
+        return None

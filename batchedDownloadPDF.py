@@ -1,11 +1,16 @@
 import json
 import simple_download_pdf
 import getContentList
-import postRequest
-import helpFunc
+from postRequest import postRequest
+from helpFunc import (
+    datetime_to_timestamp,
+    compare_timestamps,
+    build_query_params,
+    get_resource_list
+) 
 import argparse
 import os
-import getThresholdTime
+from getThresholdTime import get_threshold_time
 from datetime import datetime, timedelta
 from logger import log_exit_time
 
@@ -16,11 +21,11 @@ API_URL_RESOURCE_ITEM = "https://ht.axuex.top/api/Resource/resdetail?from_id="  
 API_URL_RESOURCE_LIST = "https://ht.axuex.top/api/Resource/resource?from_id="  # 示例 API
 
 def is_latest_than(threshold_ctime,resource):
-    threshold_timestamp = helpFunc.datetime_to_timestamp(threshold_ctime)
+    threshold_timestamp = datetime_to_timestamp(threshold_ctime)
 
-    result = helpFunc.compare_timestamps(
+    result = compare_timestamps(
         threshold_timestamp, 
-        helpFunc.datetime_to_timestamp(resource['ctime'])
+        datetime_to_timestamp(resource['ctime'])
     )
 
     # 如果result等于-1，说明该pdf的创建时间比阈值时间要晚，没有下载过
@@ -35,7 +40,7 @@ def set_queryData_of_pdf(resource,token):
     )
 
 def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
-    response = postRequest.postRequest(postUrl, queryData)
+    response = postRequest(postUrl, queryData)
     # print(json.dumps(response, indent=4, ensure_ascii=False))
     if response['code'] == 200:
         url = response['data']['link']
@@ -43,8 +48,14 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
 
         filename = f"{response['data']['title']}{file_ext}"
 
+        # formatted_threshold_ctime = datetime.strptime(get_threshold_time(), "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
+
+        # formatted_today_date = datetime.now().strftime("%Y%m%d")
+
+        base_dir = f"先锋学霸资料"
+
         params = {
-            "base_dir": "先锋学霸资料",
+            "base_dir": base_dir,
             "firstcategory": firstcategory,
             "secondcategory": secondcategory,
             "filename": filename,
@@ -85,9 +96,9 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
                 } if is_three_level else None
                 
                 # 获取资源列表
-                resource_list = helpFunc.get_resource_list(
+                resource_list = get_resource_list(
                     API_URL_RESOURCE_LIST,
-                    queryData=helpFunc.build_query_params(item['sort_id'], extra_params)
+                    queryData=build_query_params(item['sort_id'], extra_params)
                 )
 
                 # 跳过resource_list为None的情况   
@@ -119,9 +130,9 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
                             firstcategory,
                             item['title']  # 二级分类名
                         )
-
+log_file="program_interrupt_weChat.log"
        
-@log_exit_time
+@log_exit_time(log_file)
 def batch_download_resources(auth_token, threshold_ctime):
     contentlist = getContentList.normalize_content_list()
 
@@ -137,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument("--token",required=True, type=str, help="认证token")
     args = parser.parse_args()
 
-    threshold_ctime = getThresholdTime.get_threshold_time()
+    threshold_ctime = get_threshold_time(log_file=log_file)
     print(f"时间阈值: {threshold_ctime}")
 
     try:

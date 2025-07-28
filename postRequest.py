@@ -43,6 +43,35 @@ def postRequest_with_cookie(postUrl,cookie_value, queryData):
     except Exception as e:
         print("发生错误：", e)
 
+def postRequest_with_formdata(postUrl,cookie_value, files, form_data):
+    try:
+        # 设置请求头（包含Cookie）
+        headers = {
+            "Cookie": cookie_value,  # 直接设置Cookie字符串
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        }
+
+        # 发送 POST 请求（JSON 数据）
+        response = requests.post(postUrl, files=files, headers=headers, data= form_data)
+        
+        if response.status_code == 200:  # 201 表示创建成功
+            # print("POST 请求成功！")
+            return response.json()
+        else:
+            print(f"POST 请求失败，状态码：{response.status_code}")
+
+    except requests.exceptions.RequestException as e:
+        print(f"请求失败: {str(e)}")
+        if hasattr(e, 'response') and e.response:
+            print(f"响应状态码: {e.response.status_code}")
+            print(f"响应内容: {e.response.text}")
+        return None
+    
+    finally:
+        # 确保关闭所有文件
+        for file_tuple in files:
+            file_tuple[1][1].close()
+
 
 def test_postRequest():
     BASE_URL = "https://www.gwsxwk.cn"
