@@ -9,9 +9,10 @@ from helpFunc import (
     extract_keyword_match_number_bs4,
     save_all_article_links,
     load_article_links_by,
+    remove_date_from_cache,
 )
-from getThresholdTime import get_threshold_time, get_date_of_today
-from logger import log_exit_time
+from getThresholdTime import GwsxwkTimeExtractor
+from logger import log_exit_time_with_date
 from postRequest import postRequest_with_cookie
 import saveToWord
 import os
@@ -24,6 +25,8 @@ import pydash as _
 
 
 BASE_URL = "https://www.gwsxwk.cn"
+
+LOG_FILE="program_interrupt_web.log"
 
 def get_html_text(date, cookie_str, page):
     """
@@ -136,7 +139,7 @@ def request_article_html(article_link, cookie_str, date):
 
 
 
-def download_article_content(text_objects):
+def download_article_content(date, text_objects):
     # 4. 保存文件
     output_path = f"{date}/{text_objects[0]['text']}.docx"  # 使用第二段作为文件名
     try:
@@ -196,50 +199,44 @@ def is_not_need_download(article_link, date, gongwen_cookie):
     
     return False
 
+
+
+@log_exit_time_with_date(LOG_FILE)
 def download_article_by_date(gwsxwk_cookie_str, date, gongwen_cookie):
-    # 如果缓存中已经存在该日期的article_links，则直接读取缓存中的article_links
     # 如果缓存中不存在该日期的article_links，则从思享公文网获取所有article_links并保存到缓存中   
     if not load_article_links_by(date):
-        # 1. 获取思享公文网上某天所有页的article_links
         article_links = get_all_article_links(date, gwsxwk_cookie_str)
-        # 2. 备份一份所有文章链接，便于访问过于频繁之后继续读取
         save_all_article_links(article_links, date)
+    # 如果缓存中已经存在该日期的article_links，则直接读取缓存中的article_links
     else:
         article_links = load_article_links_by(date)
 
-
-    # 3. 遍历文章
+    # 3. 遍历该date下每一篇文章链接字典元素
     for article_link in article_links:
-        
         # 检查文件是否需要下载
         if is_not_need_download(article_link, date, gongwen_cookie):
             continue
-
         # 4. 请求文章html内容
         text_objects = request_article_html(article_link, gwsxwk_cookie_str, date)
-
         # 5. 如果text_objects访问过于频繁
         if text_objects == "访问过于频繁":
-            print(f"[ERROR] 访问过于频繁: {article_link_href}")
-            # 利用pydash库查找当前article_link在article_links中的索引
+            print(f"[ERROR] 访问过于频繁: {get_article_link(article_link['href'])}")
+            # 查找当前article_link在article_links中的索引
             index = _.find_index(article_links, article_link)
-            # 从article_links中获取当前article_link及其之后的所有元素
+            # 从article_links中删除当前article_link之前的所有元素
             article_links = article_links[index:]
-            # 修改缓存副本中对应的date的article_links
-            save_all_article_href(article_links, date)
+            save_all_article_links(article_links, date)          
+            # 手动触发异常
+            raise Exception("访问过于频繁")  
 
-            # 将
-
-            # 退出程序
-            print("程序已退出")
-            return
-        
+        # 6. 下载文章内容
+        download_article_content(date, text_objects)
+    
+    # 7. 清空date这一日的缓存
+    remove_date_from_cache(date)
 
     
 
-log_file="program_interrupt_web.log"
-
-@log_exit_time(log_file)
 def batched_download_article_by_date():
     parser = argparse.ArgumentParser(description="批量下载DOCX资源")
     parser.add_argument("--gwsxwk_cookie",required=True, type=str, help="思享公文认证Cookie")
@@ -247,8 +244,10 @@ def batched_download_article_by_date():
     
     args = parser.parse_args()
     
-    start_date = get_threshold_time(log_file=log_file ,is_gwsxwk=True)
-    end_date = get_date_of_today()
+    # 1. 获取开始日期和结束日期
+    gwsxwk_extractor = GwsxwkTimeExtractor(log_file=LOG_FILE)
+    start_date = gwsxwk_extractor.get_threshold_time()
+    end_date = gwsxwk_extractor.get_date_of_today()
 
     dates = generate_date_range(start_date, end_date)
     if not dates:
@@ -261,7 +260,7 @@ def batched_download_article_by_date():
         download_article_by_date(args.gwsxwk_cookie, date, args.gongwen_cookie)
 
 if __name__ == "__main__":
-    # date = "20250725"
+    date = "20250725"
     # page = 2
     # gwsxwk_cookie_str="Hm_lvt_17a6d79f196bd7dceed5aefb62507766=1752462197,1752478580; Hm_lvt_4e353b346bb9049b942dfe452e3934f8=1752462197,1752478580; Hm_lvt_17a6d79f196bd7dceed5aefb62507766=1752462197,1752478580,1753318471; HMACCOUNT=7A74DE55FF3EA8AC; Hm_lvt_4e353b346bb9049b942dfe452e3934f8=1752462197,1752478580,1753318471; Hm_lpvt_17a6d79f196bd7dceed5aefb62507766=1753411543; Hm_lpvt_4e353b346bb9049b942dfe452e3934f8=1753411543; PHPSESSID=k9lqjtij112m7cmp75g36rfna7; Hm_lpvt_17a6d79f196bd7dceed5aefb62507766=1753502232; Hm_lpvt_4e353b346bb9049b942dfe452e3934f8=1753502232"
     # article_links = get_article_links(date, page, gwsxwk_cookie_str)
@@ -269,7 +268,9 @@ if __name__ == "__main__":
    
     # max_page = get_max_page(date, gwsxwk_cookie_str)
     # print("max_page",max_page)
-    batched_download_article_by_date()
+    # batched_download_article_by_date()
+
+    download_article_by_date(gwsxwk_cookie_str, date, gongwen_cookie)
 
     
 

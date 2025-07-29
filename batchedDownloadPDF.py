@@ -10,7 +10,7 @@ from helpFunc import (
 ) 
 import argparse
 import os
-from getThresholdTime import get_threshold_time
+from getThresholdTime import MiniProgramTimeExtractor
 from datetime import datetime, timedelta
 from logger import log_exit_time
 
@@ -148,7 +148,8 @@ if __name__ == "__main__":
     parser.add_argument("--token",required=True, type=str, help="认证token")
     args = parser.parse_args()
 
-    threshold_ctime = get_threshold_time(log_file=log_file)
+    weChat_extractor = MiniProgramTimeExtractor(log_file=log_file)
+    threshold_time = weChat_extractor.get_threshold_time()
     print(f"时间阈值: {threshold_ctime}")
 
     try:

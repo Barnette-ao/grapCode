@@ -253,6 +253,33 @@ def save_all_article_links(article_links,date):
     with open(ARTICLE_HREF_CACHE_FILE, 'w') as f:
         json.dump(existing_data, f, indent=2)  # indent美化格式
 
+def remove_date_from_cache(date):
+    """从缓存文件中删除指定日期的数据
+    
+    参数:
+        date (str): 要删除的日期，格式如 "20230101"
+    """
+    # 1. 检查文件是否存在
+    if not os.path.exists(ARTICLE_HREF_CACHE_FILE):
+        print(f"警告: 缓存文件 {ARTICLE_HREF_CACHE_FILE} 不存在")
+        return
+    
+    # 2. 读取已有数据
+    with open(ARTICLE_HREF_CACHE_FILE, 'r') as f:
+        existing_data = json.load(f)
+    
+    # 3. 检查要删除的日期是否存在
+    if date not in existing_data:
+        print(f"警告: 日期 {date} 不在缓存中")
+        return
+    
+    # 4. 删除指定日期的数据
+    del existing_data[date]
+    
+    # 5. 写回文件
+    with open(ARTICLE_HREF_CACHE_FILE, 'w') as f:
+        json.dump(existing_data, f, indent=2)
+
 def load_article_links_by(date):
     """加载上次失败的参数"""
     try:
