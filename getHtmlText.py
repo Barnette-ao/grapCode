@@ -208,8 +208,7 @@ def is_not_need_download(article_link, date, gongwen_cookie):
 def download_article_by_date(gwsxwk_cookie_str, date, gongwen_cookie):
     # 如果缓存中不存在该日期的article_links，则从思享公文网获取所有article_links并保存到缓存中   
     if not load_article_links_by(date):
-        article_links = get_all_article_links(date, gwsxwk_cookie_str)
-        print("抓取的全部文章链接,article_links",article_links)    
+        article_links = get_all_article_links(date, gwsxwk_cookie_str)    
         save_all_article_links(article_links, date)
     # 如果缓存中已经存在该日期的article_links，则直接读取缓存中的article_links
     else:

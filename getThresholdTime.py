@@ -17,9 +17,8 @@ from abc import ABC, abstractmethod
 [ERROR: 访问过于频繁] 下载{date}的文件时异常退出
 '''
 class TimeThresholdExtractor:
-    def __init__(self, log_file : str ="program_interrupt.log", default_time: str="2025-07-14 00:00:00"):
+    def __init__(self, log_file : str ="program_interrupt.log"):
         self.log_file = log_file
-        self.default_time = default_time
 
     """
         获取最后记录的时间的午夜时间
@@ -77,6 +76,11 @@ class TimeThresholdExtractor:
 
 class MiniProgramTimeExtractor(TimeThresholdExtractor):
     """小程序专用时间提取器"""
+    def __init__(self, log_file : str ="program_interrupt_weChat.log", weChat_default_time: str="2025-07-14 00:00:00"):
+        super().__init__(log_file=log_file)
+        self.default_time = weChat_default_time
+
+
     def _extract_last_timestamp(self) -> Optional[str]:
         """从日志文件中提取最后一次记录的时间"""
         content = self._safe_read_log()
@@ -105,6 +109,10 @@ class MiniProgramTimeExtractor(TimeThresholdExtractor):
 
 class GwsxwkTimeExtractor(TimeThresholdExtractor):
     """思享公文专用时间提取器"""
+    def __init__(self, log_file : str ="program_interrupt_web.log", web_default_time: str="20250724"):
+        super().__init__(log_file=log_file)
+        self.default_time = web_default_time
+
     def _extract_last_timestamp(self) -> tuple:
         """从日志文件中提取最后一次记录的时间"""
         content = self._safe_read_log()
@@ -112,8 +120,9 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
         if not content:
             return None
 
-        # 匹配格式："[SUCCESS] 下载20250102的文件时正常退出",或者
-        #"[ERROR: 访问过于频繁] 下载20250102的文件时异常退出"
+        # 匹配格式：
+        # "[SUCCESS] 下载20250102的文件时正常退出",或者
+        # "[ERROR: 访问过于频繁] 下载20250102的文件时异常退出"
         pattern = re.compile(r'(?P<status>\[SUCCESS\]|\[ERROR:[^\]]*\])\s*下载(?P<date>\d{8})的文件时')
         matches = pattern.findall(content)
         if not matches:
@@ -138,7 +147,7 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
 
     def _get_base_datetime(self) -> datetime:
         """获取日志文件的最后一行时间信息，没有日志文件，就返回默认时间
-        并且格式为"%Y-%m-%d"，这只是中间格式，最终是要获得的是%Y%m%d格式
+        并且格式为"%Y%m%d"，这只是中间格式，最终是要获得的是%Y%m%d格式
         所以需要再进行格式化
         """
         if os.path.exists(self.log_file):
@@ -158,8 +167,9 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
 
         date格式为%Y%m%d
         """
+        print("status",status)
         delta_days = 1 if "SUCCESS" in status else 0
-        
+        print("delta_days",delta_days)
         return self._format_date(base_time + timedelta(days=delta_days))
 
     def get_date_of_today(self) -> str:

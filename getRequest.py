@@ -1,5 +1,4 @@
 import requests
-from selenium import webdriver
 
 def simple_get_request(url):
     try:

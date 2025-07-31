@@ -149,7 +149,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     weChat_extractor = MiniProgramTimeExtractor(log_file=log_file)
-    threshold_time = weChat_extractor.get_threshold_time()
+    threshold_ctime = weChat_extractor.get_threshold_time()
     print(f"时间阈值: {threshold_ctime}")
 
     try:

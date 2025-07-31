@@ -7,10 +7,10 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=[],
-    hookspath=['.'],
+    hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['numpy','numpy.libs','numpy-2.2.4.dist-info','pandas','pandas.libs','selenium'],
     noarchive=False,
     optimize=0,
 )
