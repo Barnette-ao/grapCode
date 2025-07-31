@@ -50,13 +50,13 @@ def log_exit_time_with_date(log_file):
                 if 'text_objects' in locals() and text_objects == "访问过于频繁":
                     exit_status = "ERROR: 访问过于频繁"
                 
-                with open(log_file, 'a') as f:
+                with open(log_file, 'a', encoding="utf-8") as f:
                     # 构造日志消息
                     if exit_status == "SUCCESS":
                         log_message = f"[{exit_status}] 下载{date}的文件时正常退出"
                     # 如果是错误状态且能获取到日期，添加日期信息
                     elif "ERROR" in exit_status and date:
-                        log_message += f"[{exit_status}] 下载{date}的文件时异常退出"
+                        log_message = f"[{exit_status}] 下载{date}的文件时异常退出"
                     
                     f.write(log_message + "\n")
         return wrapper

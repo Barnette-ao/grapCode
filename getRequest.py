@@ -51,11 +51,6 @@ def simple_get_request_with_cookie(url, cookie_value):
 
 
 
-
-if __name__ == "__main__":
-    # 目标URL（包含参数）
-    target_url = "https://www.gwsxwk.cn/index/search/index.html?keyword=20250714&search_type=10"
-
     
 
 

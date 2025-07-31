@@ -108,14 +108,18 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
     def _extract_last_timestamp(self) -> tuple:
         """从日志文件中提取最后一次记录的时间"""
         content = self._safe_read_log()
-        
+        # print("content",content)
         if not content:
             return None
 
         # 匹配格式："[SUCCESS] 下载20250102的文件时正常退出",或者
         #"[ERROR: 访问过于频繁] 下载20250102的文件时异常退出"
-        matches = re.findall(r'^$$(.*?)$$.*?(\d{8})', content)
-        return match.group(1), match.group(2) if matches else None, None
+        pattern = re.compile(r'(?P<status>\[SUCCESS\]|\[ERROR:[^\]]*\])\s*下载(?P<date>\d{8})的文件时')
+        matches = pattern.findall(content)
+        if not matches:
+            return None, None
+        last_match = matches[-1]
+        return last_match[0], last_match[1]  # 返回(status, date)
 
     def get_threshold_time(self) -> str:
         """
@@ -140,10 +144,11 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
         if os.path.exists(self.log_file):
             
             _, time_str = self._extract_last_timestamp()
+            # print("time_str",time_str)
             
-            return datetime.strptime(time_str, "%Y-%m-%d")
+            return datetime.strptime(time_str, "%Y%m%d")
         
-        return datetime.strptime(self.default_time, "%Y-%m-%d")
+        return datetime.strptime(self.default_time, "%Y%m%d")
 
     def _calculate_final_date(self, base_time: datetime, status: str) -> str:
         """
@@ -172,14 +177,14 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
 # 主程序逻辑
 if __name__ == "__main__":
     # # 实例化提取器
-    # gwsxwk_extractor = GwsxwkTimeExtractor(log_file="program_interrupt_web.log")
-
-    # # 获取阈值时间
-    # threshold_time = gwsxwk_extractor.get_threshold_time()
-    # print(f"阈值时间: {threshold_time}")
-
-    weChat_extractor = MiniProgramTimeExtractor(log_file="program_interrupt_weChat.log")
+    # weChat_extractor = MiniProgramTimeExtractor(log_file="program_interrupt_weChat.log")
 
     # 获取阈值时间
-    threshold_time = weChat_extractor.get_threshold_time()
-    print(f"阈值时间: {threshold_time}")
+    # threshold_time = weChat_extractor.get_threshold_time()
+    # print(f"阈值时间: {threshold_time}")
+
+    gwsxwk_extractor = GwsxwkTimeExtractor(log_file="program_interrupt_web.log")
+
+    # 获取阈值时间
+    status, time_str = gwsxwk_extractor._extract_last_timestamp()
+    print(f"阈值时间: {status} {time_str}")

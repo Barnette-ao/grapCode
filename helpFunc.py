@@ -2,6 +2,7 @@ import postRequest
 import json
 from bs4 import BeautifulSoup
 import re
+import os
 from datetime import datetime, timedelta
 
 
@@ -83,9 +84,6 @@ def extract_page_number_bs4(html: str, default: int = 1) -> int:
     """
     soup = BeautifulSoup(html, 'html.parser')
     page_box = soup.find('div', class_='page')
-    
-    print("html",html)
-    print("page_box",page_box)
     
     if not page_box:
         return default
@@ -243,15 +241,15 @@ def save_all_article_links(article_links,date):
     # 1. 读取已有数据（如果文件存在）
     existing_data = {}
     if os.path.exists(ARTICLE_HREF_CACHE_FILE):
-        with open(ARTICLE_HREF_CACHE_FILE, 'r') as f:
+        with open(ARTICLE_HREF_CACHE_FILE, 'r', encoding='utf-8') as f:
             existing_data = json.load(f)
     
     # 2. 更新数据（合并旧数据和新数据）
     existing_data[date] = article_links  # 按日期作为键存储
     
     # 3. 写回文件
-    with open(ARTICLE_HREF_CACHE_FILE, 'w') as f:
-        json.dump(existing_data, f, indent=2)  # indent美化格式
+    with open(ARTICLE_HREF_CACHE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(existing_data, f, indent=2, ensure_ascii=False)  # indent美化格式
 
 def remove_date_from_cache(date):
     """从缓存文件中删除指定日期的数据
@@ -265,7 +263,7 @@ def remove_date_from_cache(date):
         return
     
     # 2. 读取已有数据
-    with open(ARTICLE_HREF_CACHE_FILE, 'r') as f:
+    with open(ARTICLE_HREF_CACHE_FILE, 'r', encoding='utf-8') as f:
         existing_data = json.load(f)
     
     # 3. 检查要删除的日期是否存在
@@ -277,18 +275,16 @@ def remove_date_from_cache(date):
     del existing_data[date]
     
     # 5. 写回文件
-    with open(ARTICLE_HREF_CACHE_FILE, 'w') as f:
-        json.dump(existing_data, f, indent=2)
+    with open(ARTICLE_HREF_CACHE_FILE, 'w' , encoding='utf-8') as f:
+        json.dump(existing_data, f, indent=2, ensure_ascii=False)
 
 def load_article_links_by(date):
     """加载上次失败的参数"""
     try:
-        with open(ARTICLE_HREF_CACHE_FILE) as f:
+        with open(ARTICLE_HREF_CACHE_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
-            if data[date]:
-                return data[date]
-            else:
-                print("缓存副本中没有存储该日期的所有文章链接")
-                return None
+            # 安全地取键，没有就返回 None
+            return data.get(date)  
+               
     except (FileNotFoundError, json.JSONDecodeError):
         return None

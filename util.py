@@ -201,12 +201,10 @@ def smart_split_files(file_paths, max_files=50, max_total_size=500 * 1024 * 1024
     """
     # 1. 过滤超大文件并预计算大小
     categorized = defaultdict(list)
-    oversized_files = []
     for path in file_paths:
         try:    
             size = os.path.getsize(path)
             if size > max_single_file:
-                oversized_files.append((path, size))
                 continue
                
             # 获取分类（如"二年级上\语文"）
@@ -222,11 +220,6 @@ def smart_split_files(file_paths, max_files=50, max_total_size=500 * 1024 * 1024
             continue
 
     chunks = []
-    # 处理超大文件（每个单独成块）        
-    for path, size in oversized_files:
-        chunks.append([path])
-        print(f"超大文件单独分块: {path} ({size//1024//1024}MB)")
-
 
     for category, files  in categorized.items() :
         current_chunk = []
