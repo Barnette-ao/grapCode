@@ -310,3 +310,22 @@ def walk_tree(
             yield from walk_tree(sub_nodes, current_path, level + 1)
         else:                               # 叶子节点
             yield node, current_path
+
+
+if __name__ == "__main__":
+    API_URL_RESOURCE_LIST = "https://ht.axuex.top/api/Resource/resource?from_id="
+    for i in range(1,1000):
+        print(i)
+        resource_list = get_resource_list(
+            API_URL_RESOURCE_LIST,
+            queryData=build_query_params(
+                416, 
+                extra_params = {
+                    'order': 0,
+                    'keys': "",
+                    'edition': 0
+                }
+            )
+        )
+        print(resource_list[:2] if resource_list else "没有找到资源列表")
+    
