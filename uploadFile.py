@@ -10,6 +10,7 @@ from util import (
     get_subfolder_paths,
     smart_split_files,
     convert_category_data_to_tuple,
+    process_path
 )
 import json
 from tqdm import tqdm
@@ -138,6 +139,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     root_dir = "先锋学霸资料"
-    cookie_value = "wenku-session-id=7dfd9d80-58fa-4468-aa4d-79d4c01dc273"
-    upload_by_chunks(args.root_dir,args.cookie_value)    
+    cookie_value = "wenku-session-id=4519526e-0bb2-4717-a6be-487b5e7b9434"
+    upload_by_chunks(args.root_dir,args.cookie_value)
 

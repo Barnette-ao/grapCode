@@ -39,7 +39,7 @@ def set_queryData_of_pdf(resource,token):
         plat_form = "mp-weixin"
     )
 
-def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
+def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory='',fourthcategory='' ):
     response = postRequest(postUrl, queryData)
     # print(json.dumps(response, indent=4, ensure_ascii=False))
     if response['code'] == 200:
@@ -48,10 +48,6 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
 
         filename = f"{response['data']['title']}{file_ext}"
 
-        # formatted_threshold_ctime = datetime.strptime(get_threshold_time(), "%Y-%m-%d %H:%M:%S").strftime("%Y%m%d")
-
-        # formatted_today_date = datetime.now().strftime("%Y%m%d")
-
         base_dir = f"先锋学霸资料"
 
         params = {
@@ -59,7 +55,8 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory=''):
             "firstcategory": firstcategory,
             "secondcategory": secondcategory,
             "filename": filename,
-            "thirdcategory": thirdcategory
+            "thirdcategory": thirdcategory,
+            "fourthcategory": fourthcategory,
         }
         
         # 构建路径
@@ -78,58 +75,64 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
         auth_token: 认证token
     """
      for content in content_list:
-        if not content.get('categoraylist'):
-            continue  # 跳过没有分类的内容
 
-        firstcategory = content.get('title', '未命名分类')
+        firstcategory = content.get('name', '未命名分类')
         
-        for secondcategory, item_list in content['categoraylist'].items():
-            for item in item_list:
+        for subcontent in content['children']:
+
+            secondcategory = subcontent.get('name', '未命名分类')
+            
+            for thirdcontent in subcontent['children']:
+
+                thirdcategory = thirdcontent.get('name', '未命名分类')
+
                 # 判断是否为三级分类结构
-                is_three_level = len(content['categoraylist']) > 1
-                
+                is_not_youxiao = thirdcategory != '幼小衔接'
+
                 # 构建查询参数
                 extra_params = {
                     'order': 0,
                     'keys': "",
                     'edition': 0
-                } if is_three_level else None
-                
-                # 获取资源列表
-                resource_list = get_resource_list(
-                    API_URL_RESOURCE_LIST,
-                    queryData=build_query_params(item['sort_id'], extra_params)
-                )
+                } if is_not_youxiao else None
 
-                # 跳过resource_list为None的情况   
-                if not resource_list:
-                    continue
+                for item in thirdcontent['children']:
+                    # 获取资源列表
+                    resource_list = get_resource_list(
+                        API_URL_RESOURCE_LIST,
+                        queryData=build_query_params(item['id'], extra_params)
+                    )
 
-                # 下载每个资源
-                for resource in resource_list:
-                    # 下载之前，先根据pdf的创建事件判断筛选比该阈值要晚的时间创建的pdf，
-                    # 假设阈值时间是2025-07-11 00:00:00
-                    # 如果该pdf的创建时间比该阈值要早，则跳过下载
-                    if not is_latest_than(threshold_ctime, resource):
+                    # 跳过resource_list为None的情况   
+                    if not resource_list:
                         continue
 
-                    pdf_query = set_queryData_of_pdf(resource, auth_token)
-                    
-                    if is_three_level:
-                        download(
-                            API_URL_RESOURCE_ITEM,
-                            pdf_query,
-                            firstcategory,
-                            secondcategory,  # 二级分类名
-                            item['title']   # 三级分类名
-                        )
-                    else:
-                        download(
-                            API_URL_RESOURCE_ITEM,
-                            pdf_query,
-                            firstcategory,
-                            item['title']  # 二级分类名
-                        )
+                    # 下载每个资源
+                    for resource in resource_list:
+                        # 下载之前，先根据pdf的创建事件判断筛选比该阈值要晚的时间创建的pdf，
+                        # 假设阈值时间是2025-07-11 00:00:00
+                        # 如果该pdf的创建时间比该阈值要早，则跳过下载
+                        if not is_latest_than(threshold_ctime, resource):
+                            continue
+
+                        pdf_query = set_queryData_of_pdf(resource, auth_token)
+                        
+                        if is_not_youxiao:
+                            download(
+                                API_URL_RESOURCE_ITEM,
+                                pdf_query,
+                                firstcategory,
+                                secondcategory,  # 二级分类名
+                                thirdcategory,  # 三级分类名
+                                item['name']   # 四级分类名
+                            )
+                        else:
+                            download(
+                                API_URL_RESOURCE_ITEM,
+                                pdf_query,
+                                firstcategory,
+                                item['name']  # 二级分类名
+                            )
 log_file="program_interrupt_weChat.log"
        
 @log_exit_time(log_file)
@@ -157,6 +160,7 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"程序运行出错: {e}")
         raise
+    
     
 
    

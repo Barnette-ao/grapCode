@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import re
 import os
 from datetime import datetime, timedelta
+from typing import List, Dict, Any, Iterator, Tuple
 
 
 
@@ -288,3 +289,24 @@ def load_article_links_by(date):
                
     except (FileNotFoundError, json.JSONDecodeError):
         return None
+
+
+Category = Dict[str, Any]
+Path = List[str]
+def walk_tree(
+    nodes: List[Category],
+    path: Path | None = None,
+    level: int = 1
+) -> Iterator[Tuple[Category, Path]]:
+    """
+    深度优先遍历
+    :yield: (叶子节点, 从根到叶子的分类路径)
+    """
+    path = path or []
+    for node in nodes:
+        current_path = path + [node.get("name", "未命名分类")]
+        sub_nodes = node.get("children", [])
+        if sub_nodes:                       # 还有下一层
+            yield from walk_tree(sub_nodes, current_path, level + 1)
+        else:                               # 叶子节点
+            yield node, current_path

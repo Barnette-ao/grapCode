@@ -24,19 +24,18 @@ def match_file_name(paths):
 # 先锋学霸资料\二年级上册\语文\预习资料\二年级（上）语文《识字表》生字音节音序部首组词.pdf
 # 先锋学霸资料去掉，二年级上册改为二年级上，预习资料\二年级（上）语文《识字表》生字音节音序部首组词.pdf去掉，二年级上\语文
 def process_path(path):
-    # 1. 移除开头的"先锋学霸资料\"
-    path = re.sub(r'^先锋学霸资料\\', '', path)
-    
-    # 2. 替换"上册"->"上"，"下册"->"下"
+    # 1. 替换"上册"->"上"，"下册"->"下"
     path = path.replace('上册', '上').replace('下册', '下')
-
+    # 2. 切分
     parts = path.split('\\')
-    if len(parts) >= 2:
-        [firstcategory, secondcategory] = match_file_name([parts[0], parts[1]])
-        return f"{firstcategory}\\{secondcategory}"
+
+    if parts[1] == "幼小衔接":
+        [firstcategory, secondcategory] = match_file_name([parts[1], parts[2]])
     else:
-        print("路径格式不正确")
-        return None
+        [firstcategory, secondcategory] = [parts[2], parts[3]]
+
+    return f"{firstcategory}\\{secondcategory}"
+        
 
 def convert_category_data_to_tuple(category_data: List[dict]) -> tuple:
     """

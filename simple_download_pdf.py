@@ -2,14 +2,14 @@ import requests
 import os
 from tqdm import tqdm
 
-def build_save_path(base_dir, firstcategory, secondcategory, filename, thirdcategory=''):
+def build_save_path(base_dir, firstcategory, secondcategory, filename, thirdcategory='', fourthcategory=''):
     """构建完整的文件保存路径"""
     # 第一层目录结构
     save_top_dir = os.path.join(base_dir, firstcategory)
     
     # 根据是否有三级分类确定最终目录
     if thirdcategory:
-        save_dir = os.path.join(save_top_dir, secondcategory, thirdcategory)
+        save_dir = os.path.join(save_top_dir, secondcategory, thirdcategory,fourthcategory)
     else:
         save_dir = os.path.join(save_top_dir, secondcategory)
     
