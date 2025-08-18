@@ -10,7 +10,8 @@ from util import (
     get_subfolder_paths,
     smart_split_files,
     convert_category_data_to_tuple,
-    process_path
+    process_path,
+    set_response_message,
 )
 import json
 from tqdm import tqdm
@@ -56,9 +57,9 @@ def collect_pdf_files(base_dir):
     # 递归扫描函数
     def _scan_directory(current_dir):
         for entry in os.listdir(current_dir):
-            # 忽略幼小衔接下可能存在的知识汇总和专项练习目录
-            if os.path.basename(current_dir) == "幼小衔接" and entry in ['知识汇总','专项练习']:
-                continue
+            # # 忽略幼小衔接下可能存在的知识汇总和专项练习目录
+            # if os.path.basename(current_dir) == "幼小衔接" and entry in ['知识汇总','专项练习']:
+            #     continue
 
             full_path = os.path.normpath(os.path.join(current_dir, entry))
             
@@ -111,7 +112,8 @@ def upload_by_chunks(root_dir,cookie_value):
         print(path)
         all_file_path = collect_pdf_files(path)
         path_chunks = smart_split_files(all_file_path)
-        # print("path_chunk", path_chunks)
+        total, success, fail = 0, 0, 0
+
         for path_chunk in path_chunks:
             # 准备文件数据
             files = get_files_data(path_chunk)    
@@ -120,7 +122,7 @@ def upload_by_chunks(root_dir,cookie_value):
                 print("获取categoryId和parentId失败")
                 continue
    
-            [categoryId, parentId, categoryName] = get_categoryId_with_parentId(path_chunk[0],category_data_tuple)
+            [categoryId, parentId, categoryName] = get_categoryId_with_parentId(path_chunk[0],category_data_tuple)  
 
             response = postRequest_with_formdata(
                 postUrl="http://211.154.30.100:8222/base/resource/uploadMutiAPI2",
@@ -128,8 +130,23 @@ def upload_by_chunks(root_dir,cookie_value):
                 files=files,
                 form_data=FormData(categoryId, parentId, categoryName).to_dict()
             )
-        
-            print(response)
+
+            if response['msg'] != '操作成功':
+                print("上传失败")
+            else:
+                print("上传成功")
+                message = set_response_message(response)
+                # 找到匹配的数据了
+                if (message):
+                    # 获得各个分块的上传情况
+                    [cliptotal, clipsuccess, clipfail] = message
+                    # 更新总的上传情况
+                    total += cliptotal
+                    success += clipsuccess
+                    fail += clipfail
+
+        # 打印总的上传情况
+        print(f"总的上传{total}个，成功{success}个，失败{fail}个")
 
 
 if __name__ == "__main__":

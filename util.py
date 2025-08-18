@@ -10,7 +10,8 @@ from functools import lru_cache
 
 dict_of_changed_content = { 
     '笔画练习': '控笔练习',
-    '综合分类': '综合资料'
+    '综合分类': '综合资料',
+    '专项练习': '综合资料',
 }
 
 # 为匹配小程序的文件目录名以及先锋网站的类别名
@@ -54,8 +55,8 @@ def get_category_id_pid(category_data, category_name, parent_category_name):
     """
     根据类别名称在类别数据中查找对应的ID和对应的父类别ID
     """
+    # print("category_data, category_name, parent_category_name",category_data, category_name, parent_category_name)
     candidates = [item for item in category_data if item['name'] == category_name]
-    # print("candidates",candidates)
 
     # 情况1：无匹配项
     if not candidates:
@@ -67,25 +68,16 @@ def get_category_id_pid(category_data, category_name, parent_category_name):
         return [candidates[0]['id'], candidates[0]['pid']]
     
     # 情况3：多个同名项且有父类别名
-    parent_category_id = next(
-        (item['id'] for item in category_data 
-         if item['name'] == parent_category_name),
-        None
-    )
+    for target_item in candidates:
+        targetId, targetPid= target_item['id'], target_item['pid']
+         
+        for item in category_data:
+            if item['id'] == targetPid and item['name'] == parent_category_name:
+                return [targetId, targetPid]
 
-    if not parent_category_id:
-        print(f"未找到父类别名称为 {parent_category_name} 的项")
-        return None
+    return None        
+                   
 
-    result = next(
-        (item for item in category_data 
-         if item['pid'] == parent_category_id and item['name'] == category_name),
-        None
-    )
-
-    return [result['id'],result['pid'] ] if result else None           
-
-@lru_cache(maxsize=128)
 def get_category_id_pid_cached(
     category_data_tuple: tuple,  # 必须转换为可哈希类型
     category_name: str,
@@ -96,6 +88,7 @@ def get_category_id_pid_cached(
     :param category_data_tuple: ((id, pid, name), ...)
     :return: [category_id, parent_id] 或 None
     """
+
     # 临时转换回列表格式（保持原逻辑）
     category_data = [
         {"id": item[0], "pid": item[1], "name": item[2]}
@@ -117,10 +110,11 @@ def get_categoryId_with_parentId(
 
     # 路径格式正确，如parent_category//category,否则返回None    
     processed_path = process_path(file_path)
+
     if not processed_path or '\\' not in processed_path:
         return None
 
-    parent_category, category = processed_path.split('\\', maxsplit=1)
+    parent_category, category = processed_path.split('\\', maxsplit=1) 
 
     # 调用带缓存的版本
     result = get_category_id_pid_cached(category_data_tuple, category, parent_category)
@@ -235,8 +229,29 @@ def smart_split_files(file_paths, max_files=50, max_total_size=500 * 1024 * 1024
             current_chunk.append(path)
             current_size += size
 
-            if current_chunk:
-                chunks.append(current_chunk)
+        if current_chunk:
+            chunks.append(current_chunk)
 
 
     return chunks 
+
+
+def set_response_message(response):
+    """
+    设置响应消息
+    :param response: 响应对象
+    :param message: 消息内容
+    :param status_code: 状态码（默认200）
+    """
+    message = response['data']
+    # 使用正则表达式提取信息
+    pattern = r"此次上传文件(\d+)个，成功<span style='color:blue;font-weight:bold'>(\d+)</span>个，失败<span style='color:red;font-weight:bold'>(\d+)</span>个"
+    match = re.search(pattern, message)
+    if match:
+        total, success, fail = match.groups()
+        result = f"该分块上传{total}个，成功{success}个，失败{fail}个"
+        print(result)
+        return [int(total), int(success), int(fail)]
+    else:
+        print("未找到匹配信息")
+        return None
