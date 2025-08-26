@@ -181,143 +181,6 @@ from requests_toolbelt.multipart.encoder import CustomBytesIO
 
 # 目标 URL
 
-def postRequest(postUrl, queryData): 
-    try:
-        # 发送 POST 请求（JSON 数据）
-        response = requests.post(postUrl, json=queryData)
-        
-        if response.status_code == 200:  # 201 表示创建成功
-            # print("POST 请求成功！")
-            return response.json()
-        else:
-            print(f"POST 请求失败，状态码：{response.status_code}")
-
-    except Exception as e:
-        print("发生错误：", e)
-
-
-def postRequest_with_cookie(postUrl,cookie_value, queryData):
-    try:
-        # 设置请求头（包含Cookie）
-        headers = {
-            "Cookie": cookie_value,  # 直接设置Cookie字符串
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
-            "Accept": "application/json"  # 明确要求JSON
-        }
-
-        # 发送 POST 请求（JSON 数据）
-        response = requests.post(postUrl, headers=headers, json=queryData)
-        
-        if response.status_code == 200:  # 201 表示创建成功
-            # print("POST 请求成功！")
-            return response.json()
-        else:
-            print(f"POST 请求失败，状态码：{response.status_code}")
-
-    except Exception as e:
-        print("发生错误：", e)
-
-def postRequest_with_formdata(postUrl,cookie_value, files, form_data):
-    try:
-        # 构建MultipartEncoder
-        # 1. 转换所有表单值为字符串（关键修正）
-        str_form_data = {k: str(v) for k, v in form_data.items()}
-
-        # 2. 构建MultipartEncoder字段
-        fields = {**str_form_data}  # 使用转换后的表单数据
-        
-        # 添加所有文件（自动处理files数组中的每个元素）
-        for i, file_tuple in enumerate(files):
-            field_name = f'file_{i}' if len(files) > 1 else 'file'  # 单文件时保持字段名简洁
-            filename = file_tuple[1][0]  # 文件名
-            file_obj = file_tuple[1][1]   # 文件对象
-            mime_type = file_tuple[1][2]  # MIME类型
-            fields[field_name] = (filename, file_obj, mime_type)
-
-        encoder = MultipartEncoder(fields=fields)
-
-        # 创建进度条
-        with tqdm(
-            total=encoder.len,
-            unit='B',
-            unit_scale=True,
-            desc="上传进度",
-            mininterval=0.5  # 降低刷新频率提升性能
-        ) as pbar:
-            def callback(monitor):
-                pbar.n = monitor.bytes_read
-                pbar.refresh()
-
-            monitor = encoder
-            monitor.callback = callback
-
-            # 设置请求头（包含Cookie）
-            headers = {
-                "Cookie": cookie_value,  # 直接设置Cookie字符串
-                "Content-Type": encoder.content_type,
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
-            }
-
-            # 上传文件
-            # 使用流式上传（显示进度）
-            response = requests.post(
-                postUrl,
-                headers=headers,
-                data=monitor
-            )
-            
-        
-        if response.status_code == 200:  # 201 表示创建成功
-            return response.json()
-        else:
-            print(f"POST 请求失败，状态码：{response.status_code}")
-
-    except requests.exceptions.RequestException as e:
-        print(f"请求失败: {str(e)}")
-        if hasattr(e, 'response') and e.response:
-            print(f"响应状态码: {e.response.status_code}")
-            print(f"响应内容: {e.response.text}")
-        return None
-    
-    finally:
-        # 确保关闭所有文件
-        for file_tuple in files:
-            file_tuple[1][1].close()
-
-
-def test_postRequest():
-    BASE_URL = "https://www.gwsxwk.cn"
-    postUrl = f"{BASE_URL}/index/article/download.html"
-    queryData = {
-        "detail_id" : "183755" 
-    }
-    resource_list = postRequest(postUrl, queryData)
-    print("请求成功",json.dumps(resource_list, indent=4, ensure_ascii=False))
-
-def test_download_single_pdf():
-    API_URL_RESOURCE_ITEM = "https://ht.axuex.top/api/Resource/resdetail?from_id="
-    queryData = {"id":"2124","token":"386c0d996d9bee266b55f4aa938e374d","plat_form":"mp-weixin"}
-    response = requests.post(API_URL_RESOURCE_ITEM, json=queryData)
-    print("请求成功",json.dumps(response.json(), indent=4, ensure_ascii=False))
-    response = response.json()
-    url = response['data']['link']
-    file_ext = os.path.splitext(url)[1]
-    filename = f"{response['data']['title']}{file_ext}"
-    print(filename)
-
-    params = {
-        "base_dir": "先锋学霸资料",
-        "firstcategory": "一年级下",
-        "secondcategory": "数学",
-        "filename": filename,
-        "thirdcategory": ""
-    }
-    
-        
-    # 构建路径
-    save_path = simple_download_pdf.build_save_path(**params)
-    simple_download_pdf.simple_download_pdf(url, save_path)
-
 
 ------------------------------------------
 测试上传记录
@@ -362,3 +225,35 @@ _______________________________________________________________
 而且获取最后一次访问的时间也需要分开处理
 
 为了让代码具有单一职责，易于维护，将getThresholdTime.py用OOP实现是我的决定，这是明天的工作。
+
+
+------------------------------------------------------------------------------
+20250825
+现在知道
+
+resource_list = get_resource_list(
+            API_URL_RESOURCE_LIST,
+            queryData=build_query_params(
+                430, 
+                extra_params = {
+                    'order': 0,
+                    'keys': "",
+                    'edition': 0
+                }
+            )
+        )
+
+结论：get_resource_list这个函数只能连续执行100次，超过之后，就会找不到资源列表。
+
+进一步用真实的数据测试
+不再重复一百次，同一id为430的查询，而是用真实的数据查询。
+
+
+经过测试，如果执行一百次之后，结合time.sleep(60)，先暂停一分钟，然后继续执行，是可以查询到资源列表的。
+
+
+count += 1  # 每遍历一个叶子节点，计数器加 1
+if count >= max_count:  # 如果计数器达到 max_count
+    print(f"已遍历 {max_count} 个节点，暂停 1 分钟")
+    time.sleep(60)  # 暂停 1 分钟
+    count = 0  # 重置计数器

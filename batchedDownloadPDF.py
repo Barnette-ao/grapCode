@@ -1,4 +1,5 @@
 import json
+import time
 import simple_download_pdf
 import getContentList
 from postRequest import postRequest
@@ -15,6 +16,7 @@ from getThresholdTime import MiniProgramTimeExtractor
 from datetime import datetime, timedelta
 from logger import log_exit_time
 from numbers import Number
+
 
 # API_URL_RESOURCE_ITEM: 单个资源的信息API地址
 # API_URL_RESOURCE_LIST: 资源列表API地址
@@ -43,7 +45,7 @@ def set_queryData_of_pdf(resource,token):
 
 def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory='',fourthcategory='' ):
     response = postRequest(postUrl, queryData)
-    print(json.dumps(response, indent=4, ensure_ascii=False))
+    # print(json.dumps(response, indent=4, ensure_ascii=False))
     if response['code'] == 200:
         url = response['data']['link']
         file_ext = os.path.splitext(url)[1] # 获取文件扩展名 例如 .pdf
@@ -63,9 +65,12 @@ def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory='',fou
         
         # 构建路径
         save_path = simple_download_pdf.build_save_path(**params)
-        print("执行到了这里")
+        # print("执行到了这里")
         simple_download_pdf.simple_download_pdf(url, save_path)
 
+     
+
+    
 
 def download_resources_by_category(content_list, auth_token, threshold_ctime):
      """
@@ -85,18 +90,31 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
         幼小衔接和其他分类的区别在于，幼小衔接的分类在下载的时候的动态参数只有两个，其他分类的分类在下载的时候的动态参数有四个
         如上，幼小衔接的目录为幼小衔接，拼音资料。其他分类的目录为一年级，一年级上册，语文，电子课本
     """
+
+     count = 0
+     max_count = 100
+     
      for leaf, path in walk_tree(content_list):
         # 获取文件路径，path的长度=树的深度
-        print(leaf, path)
+        # print(leaf, path)
+
+        """
+        count计数变量，max_count为计数上限，因为微信小程序限制接口的连续访问次数，最大访问连续访问次数是100
+        如果连续访问300次，从101次开始，资源链表就问空。但是只要在访问数达到一百之后，暂停一下程序，然后再接
+        着访问，是可以正常获取资源的
+        """
+        count += 1  # 每遍历一个叶子节点，计数器加 1
+        if count >= max_count:
+            print(f"已遍历 {max_count} 个节点，暂停 1 分钟")
+            time.sleep(60)  # 暂停 1 分钟
+            count = 0  # 重置计数器
+        
         first, *rest = path
 
         # 如果是幼小衔接，那么下载时只需要一级分类和二级分类
         # 其他分类则需要一级分类、二级分类、三级分类、四级分类
         # fold_path作为download函数的动态参数容器
-        if first == '幼小衔接':
-            folder_path = [rest[1],rest[2]]
-        else:
-            folder_path = path
+        folder_path = [rest[1],rest[2]] if first == '幼小衔接' else path
 
         extra_params = {
             'order': 0,
@@ -104,16 +122,14 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
             'edition': 0
         } if first != "幼小衔接" else None
 
-        
         resource_list = get_resource_list(
             API_URL_RESOURCE_LIST,
             queryData=build_query_params(leaf['id'], extra_params)
         )
-        print(resource_list[:2] if resource_list else "没有找到资源列表")
 
         # 跳过resource_list为None的情况   
         if not resource_list:
-            print(f"没有找到资源列表，跳过下载 {leaf['name'],resource_list}")
+            # print(f"没有找到资源列表，跳过下载 {leaf['name'],resource_list}")
             continue
 
         # 下载每个资源
@@ -122,12 +138,11 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
             # 假设阈值时间是2025-07-11 00:00:00
             # 如果该pdf的创建时间比该阈值要早，则跳过下载
             if not is_latest_than(threshold_ctime, resource):
-                print(f"跳过下载 {resource['title']}，因为它的创建时间比阈值时间 {threshold_ctime} 早")
+                # print(f"跳过下载 {resource['title']}，因为它的创建时间比阈值时间 {threshold_ctime} 早")
                 continue
 
             pdf_query = set_queryData_of_pdf(resource, auth_token)
-            print("pdf_query", pdf_query)
-
+            
             # 根据实际层级动态解包
             *cats, item_name = folder_path
             download(
@@ -136,6 +151,10 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
                 *cats,  # 如果不是幼小衔接就是前三级目录否则是一级目录
                 item_name   # 如果不是幼小衔接就是四级分类名否则就是二级目录
             )
+
+       
+
+
 
 log_file="program_interrupt_weChat.log"
        

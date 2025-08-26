@@ -6,6 +6,9 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Iterator, Tuple
 
+import getContentList
+import time
+
 
 
 def build_query_params(sort_id, extra_params=None):
@@ -296,36 +299,58 @@ Path = List[str]
 def walk_tree(
     nodes: List[Category],
     path: Path | None = None,
-    level: int = 1
+    level: int = 1,
+    max_count: int = 100
 ) -> Iterator[Tuple[Category, Path]]:
     """
     深度优先遍历
     :yield: (叶子节点, 从根到叶子的分类路径)
     """
     path = path or []
+
     for node in nodes:
         current_path = path + [node.get("name", "未命名分类")]
         sub_nodes = node.get("children", [])
         if sub_nodes:                       # 还有下一层
-            yield from walk_tree(sub_nodes, current_path, level + 1)
+            yield from walk_tree(sub_nodes, current_path)
         else:                               # 叶子节点
             yield node, current_path
+        
+
+                
+    
+    
 
 
 if __name__ == "__main__":
+    content_list = getContentList.normalize_content_list()
     API_URL_RESOURCE_LIST = "https://ht.axuex.top/api/Resource/resource?from_id="
-    for i in range(1,1000):
-        print(i)
-        resource_list = get_resource_list(
-            API_URL_RESOURCE_LIST,
-            queryData=build_query_params(
-                416, 
-                extra_params = {
-                    'order': 0,
-                    'keys': "",
-                    'edition': 0
-                }
+    
+
+
+    for i in range(1,11):
+       count = 1
+       if i > 1:
+            time.sleep(60)
+       for j in range(1,101):
+            print(count)
+            resource_list = get_resource_list(
+                API_URL_RESOURCE_LIST,
+                queryData=build_query_params(
+                    385, 
+                    extra_params = {
+                        'order': 0,
+                        'keys': "",
+                        'edition': 0
+                    }
+                )
             )
-        )
-        print(resource_list[:2] if resource_list else "没有找到资源列表")
+            print("找到了资源列表" if resource_list else "没有找到资源列表")
+            count += 1
+
+
+    # for leaf, path in walk_tree(content_list):
+    #     print(count,leaf, path)
+        
+        
     
