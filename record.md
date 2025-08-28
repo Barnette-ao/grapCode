@@ -257,3 +257,6 @@ if count >= max_count:  # 如果计数器达到 max_count
     print(f"已遍历 {max_count} 个节点，暂停 1 分钟")
     time.sleep(60)  # 暂停 1 分钟
     count = 0  # 重置计数器
+
+
+一年级上

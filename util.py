@@ -7,9 +7,9 @@ from math import ceil
 from collections import defaultdict
 from typing import List, Optional, Tuple
 from functools import lru_cache
+from getRequest import simple_get_request_with_cookie
 
 dict_of_changed_content = { 
-    '笔画练习': '控笔练习',
     '综合分类': '综合资料',
     '专项练习': '综合资料',
 }
@@ -24,19 +24,17 @@ def match_file_name(paths):
 # 在之后构建form-data时需要categoryId,和parentId,但是类别接口返回的数据和现在的目录结构不匹配
 # 输入先锋学霸资料\二年级\二年级上册\语文\预习资料\二年级（上）语文《识字表》生字音节音序部首组词.pdf
 # 先锋学霸资料\幼小衔接\口算计算\撒记得哦爱家哦上帝.pdf
-# 返回二年级上\语文和幼小衔接\口算计算
+# 返回二年级上\语文\预习资料和幼小衔接\口算计算
 def process_path(path):
     # 1. 替换"上册"->"上"，"下册"->"下"
     path = path.replace('上册', '上').replace('下册', '下')
     # 2. 切分
     parts = path.split('\\')
+    # 3. 截取其中有用的部分
+    path_list = match_file_name([parts[1], parts[2]]) if parts[1] == "幼小衔接" else [parts[2], parts[3], parts[4]] 
 
-    if parts[1] == "幼小衔接":
-        [firstcategory, secondcategory] = match_file_name([parts[1], parts[2]])
-    else:
-        [firstcategory, secondcategory] = [parts[2], parts[3]]
-
-    return f"{firstcategory}\\{secondcategory}"
+    # 4. 以\连接
+    return "\\".join(path_list)
         
 
 def convert_category_data_to_tuple(category_data: List[dict]) -> tuple:
@@ -97,32 +95,94 @@ def get_category_id_pid_cached(
     return get_category_id_pid(category_data, category_name, parent_category_name)
 
 
+def get_detail_category(cookie_value, categoryId, thirdcategory, isVersion=False):
+    """
+    根据categoryId和thirdcategory获取filterDetailCode2
+    """
+
+    # 如果thirdcategory是空字符串，则直接返回空字符串
+    if not thirdcategory:
+        return ""
+
+    # 版本号的唯一标识和类型的唯一标识接口结构类似
+    # 查类型的数据比查版本的数据多得多，所以是否是版本默认为False
+    apiName = "getBanbenList" if isVersion else "getLeixingList"
+
+    sub_category_list=simple_get_request_with_cookie(
+        url=f"http://211.154.30.100:8222/base/resource/{apiName}?categoryId={categoryId}",
+        cookie_value=cookie_value,
+    )
+
+    sub_category_data = [
+        { 
+            "id": item['id'],
+            "filterDetailName": item['filterDetailName'],
+            "filterDetailCode": item['filterDetailCode'] 
+        }
+        for item in json.loads(sub_category_list)
+    ]
+    # print("sub_category_data",sub_category_data)
+
+    filtered_list = list(filter(lambda x: x['filterDetailName'] == thirdcategory, sub_category_data))
+
+    if(filtered_list and len(filtered_list) == 1):
+        detailCode = filtered_list[0]['filterDetailCode']
+    else:
+        print("未找到匹配项或匹配项不唯一")
+        return ""
+
+    return detailCode
+
+
 def get_categoryId_with_parentId(
     file_path:str, 
-    category_data_tuple:tuple
+    category_data_tuple:tuple,
+    cookie_value:str
 ) -> Optional[List]:
     """
     根据文件路径获取对应的categoryId和parentId
     :param file_path: 文件路径
     :param category_data_tuple: 类别数据(元组)
-    :return: [categoryId, parentId, categoryName] 或 None
+    :param cookie_value: cookie值
+    :return: [categoryId, parentId, categoryName, filterDetailCode2] 或 None
     """
 
     # 路径格式正确，如parent_category//category,否则返回None    
     processed_path = process_path(file_path)
+    # print("processed_path",processed_path)
 
     if not processed_path or '\\' not in processed_path:
         return None
 
-    parent_category, category = processed_path.split('\\', maxsplit=1) 
+    parts = processed_path.split('\\')
+
+    # 确保 parts 至少有三个元素，不足的部分用空字符串填充
+    # 幼小衔接分类中，sub_category会返回空字符串
+    parts += [''] * (3 - len(parts))
+    # print("parts",parts)
+
+    parent_category, category, sub_category = parts[:3]
+    # parent_category, category, sub_category 
+    # print("parent_category, category, sub_category",parent_category, category, sub_category)
 
     # 调用带缓存的版本
     result = get_category_id_pid_cached(category_data_tuple, category, parent_category)
-    
+    # print("result",result)
+
     if not result:
         return None
-          
-    return [result[0], result[1], category]
+    
+    # 调用get_detail_category获取filterDetailCode2
+    # 如果sub_category为空字符串，则filterDetailCode2为空字符串
+    isVersion = True if sub_category and "版" in sub_category else False
+    detailCode = get_detail_category(
+        cookie_value = cookie_value,
+        categoryId = result[0],
+        thirdcategory = sub_category,
+        isVersion=isVersion
+    )
+         
+    return [result[0], result[1], category,detailCode, isVersion]
 
 def build_tree(data):
     """
@@ -255,3 +315,26 @@ def set_response_message(response):
     else:
         print("未找到匹配信息")
         return None
+
+
+
+if __name__ == "__main__":
+    # cookie_value = "wenku-session-id=4519526e-0bb2-4717-a6be-487b5e7b9434"
+    # sub_category_list = get_sub_category(cookie_value, )
+    filterDetailCode2 = get_detail_category(
+        cookie_value = "wenku-session-id=4519526e-0bb2-4717-a6be-487b5e7b9434",
+        categoryId = 231319,
+        thirdcategory = "青岛版",
+        isVersion=True
+    )
+
+    print(filterDetailCode2)
+
+    # 输入先锋学霸资料\二年级\二年级上册\语文\预习资料\二年级（上）语文《识字表》生字音节音序部首组词.pdf
+    # 先锋学霸资料\幼小衔接\口算计算\撒记得哦爱家哦上帝.pdf
+    
+    path1 = "先锋学霸资料\二年级\二年级上册\语文\预习资料\二年级（上）语文《识字表》生字音节音序部首组词.pdf"
+    path2 = "先锋学霸资料\幼小衔接\口算计算\撒记得哦爱家哦上帝.pdf"
+    print(process_path(path1))
+    print(process_path(path2))
+

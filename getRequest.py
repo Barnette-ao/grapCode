@@ -17,7 +17,7 @@ def simple_get_request(url):
 
 
 
-def simple_get_request_with_cookie(url, cookie_value):
+def simple_get_request_with_cookie(url, cookie_value, data=None):
     try:
         # 设置请求头（包含Cookie）
         headers = {
@@ -30,12 +30,13 @@ def simple_get_request_with_cookie(url, cookie_value):
         response = requests.get(
             url,
             headers=headers,  # 传入自定义请求头
+            params=data,      # 传入查询参数
             timeout=5
         )
         
         # 检查响应状态码
         if response.status_code == 200:
-           print("请求成功！")  
+        #    print("请求成功！")  
         #    print(f"原始响应:\n{response.text}")  # 打印前500字符
            if(response.text): 
              return response.text

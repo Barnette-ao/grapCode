@@ -12,6 +12,8 @@ from util import (
     convert_category_data_to_tuple,
     process_path,
     set_response_message,
+    build_tree,
+    print_tree
 )
 import json
 from tqdm import tqdm
@@ -60,7 +62,6 @@ def collect_pdf_files(base_dir):
             # # 忽略幼小衔接下可能存在的知识汇总和专项练习目录
             # if os.path.basename(current_dir) == "幼小衔接" and entry in ['知识汇总','专项练习']:
             #     continue
-
             full_path = os.path.normpath(os.path.join(current_dir, entry))
             
             if os.path.isdir(full_path):
@@ -103,6 +104,9 @@ def upload_by_chunks(root_dir,cookie_value):
     """
     分块上传文件
     """ 
+    # tree = build_tree(category_data)
+    # print_tree(tree)
+
     category_data_tuple = convert_category_data_to_tuple(
         get_category_data(cookie_value)
     )
@@ -118,17 +122,17 @@ def upload_by_chunks(root_dir,cookie_value):
             # 准备文件数据
             files = get_files_data(path_chunk)    
 
-            if not get_categoryId_with_parentId(path_chunk[0],category_data_tuple):
+            if not get_categoryId_with_parentId(path_chunk[0],category_data_tuple,cookie_value):
                 print("获取categoryId和parentId失败")
                 continue
    
-            [categoryId, parentId, categoryName] = get_categoryId_with_parentId(path_chunk[0],category_data_tuple)  
+            params = get_categoryId_with_parentId(path_chunk[0],category_data_tuple,cookie_value)
 
             response = postRequest_with_formdata(
                 postUrl="http://211.154.30.100:8222/base/resource/uploadMutiAPI2",
                 cookie_value=cookie_value,
                 files=files,
-                form_data=FormData(categoryId, parentId, categoryName).to_dict()
+                form_data=FormData(*params).to_dict()
             )
 
             if response['msg'] != '操作成功':

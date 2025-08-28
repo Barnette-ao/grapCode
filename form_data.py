@@ -1,8 +1,11 @@
 class FormData:
-    def __init__(self, categoryId, parentId, categoryName):
+    def __init__(self, categoryId, parentId, categoryName,detailCode,isVersion):
         self.categoryId = categoryId
         self.parentId = parentId
         self.categoryName = categoryName
+
+        self.filterDetailCode1 = detailCode if isVersion else ""
+        self.filterDetailCode2 = "" if isVersion else detailCode
 
         self.pointPrice = 10.00
         self.downType = 2
@@ -11,8 +14,6 @@ class FormData:
         self.attachAttrSize = 0
         self.title = ""
         self.content = ""
-        self.filterDetailCode1 = ""
-        self.filterDetailCode2 = ""
         self.status = 1
         self.isTop = 0
         self.openJili = 0
