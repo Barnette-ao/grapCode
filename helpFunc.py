@@ -6,8 +6,7 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Iterator, Tuple
 
-import getContentList
-import time
+from pathlib import Path
 
 
 
@@ -69,7 +68,7 @@ def extract_keyword_match_number_bs4(html: str) -> int:
     search_bar_box = soup.find('div', class_='so_bar')
     if not search_bar_box:
         print("未找到搜索结果")
-        print("html",html)
+        # print("html",html)
         
 
     # 2. 提取b标签的内容
@@ -111,20 +110,26 @@ def extract_page_number_bs4(html: str, default: int = 1) -> int:
     return max(page_numbers)    
 
 def extract_p_bs4(html):
-    """用BeautifulSoup提取所有p类文本和图片"""
+    """
+    html
+    用BeautifulSoup提取所有p类文本和图片
+    
+    """
     soup = BeautifulSoup(html, 'html.parser')
-
     # 查找是否存在'访问过于频繁'的字符串
     text = soup.get_text(" ", strip=True)
+
     if '访问过于频繁' in text:
         return "访问过于频繁"
+    elif "访问量用完" in text:
+        return "访问量用完"
 
     content_box = soup.find('div', class_='content-box')
-    p_tags = []
-    
+
     if not content_box:
         return []
-
+    
+    p_tags = []
     for p in content_box.find_all('p'):
         p_tags.append({
             "text": p.get_text(strip=True),  # 提取纯文本并去除首尾空格
@@ -149,16 +154,20 @@ def process_html_to_links(html):
     """
      完整处理流程：解析HTML → 去重链接
     """
-    return get_unique_links_list(extract_links_bs4(html))
-
-
-def extra_title(pattern,text):
-    match = re.search(pattern, text)
-    return match.group(1) if match else None
+    links = extract_links_bs4(html)
+    return get_unique_links_list(links)
 
 def extra_doc_title(text):
-    pattern = r"\d+：(.*)"  # \d+ 匹配数字，：匹配冒号，(.*) 匹配内容
-    return extra_title(pattern,text)
+    pattern = r"\d+：(.+)"  # \d+ 匹配数字，：匹配冒号，(.*) 匹配内容
+    
+    match = re.search(pattern, text)
+    # 去掉标题中的【团队精品】的字样
+    if match:
+        raw_title = match.group(1)
+        doc_title = re.sub(r'^【[^】]*】\s*', '', raw_title)
+        return doc_title.strip()
+    else:
+        return None
 
 def isDoc(text):
     return not "ppt" in text.lower()
@@ -317,40 +326,36 @@ def walk_tree(
             yield node, current_path
         
 
-                
-    
-    
+def get_max_page(html_text):
+    """
+    获取最大页数
+    """
+    if(html_text):
+        max_page = extract_page_number_bs4(html_text)
+        return max_page
+
+# 遍历所有下载的文件目录，获取文件名
+def get_all_file_names():
+    """
+    获取所有下载的文件目录，获取文件名
+    """
+    file_names = []
+    for root, dirs, files in os.walk("./download"):
+        for file in files:
+            file_names.append(file)
+    return file_names
+
+
+def get_all_filename(target_folder):
+    folder = Path(target_folder)
+    # 只保留文件名（不含路径）
+    all_names = [p.name for p in folder.rglob('*') if p.is_file()]
+    print(all_names)
 
 
 if __name__ == "__main__":
-    content_list = getContentList.normalize_content_list()
-    API_URL_RESOURCE_LIST = "https://ht.axuex.top/api/Resource/resource?from_id="
-    
+    get_all_filename(r"./20250825")
 
-
-    for i in range(1,11):
-       count = 1
-       if i > 1:
-            time.sleep(60)
-       for j in range(1,101):
-            print(count)
-            resource_list = get_resource_list(
-                API_URL_RESOURCE_LIST,
-                queryData=build_query_params(
-                    385, 
-                    extra_params = {
-                        'order': 0,
-                        'keys': "",
-                        'edition': 0
-                    }
-                )
-            )
-            print("找到了资源列表" if resource_list else "没有找到资源列表")
-            count += 1
-
-
-    # for leaf, path in walk_tree(content_list):
-    #     print(count,leaf, path)
         
         
     

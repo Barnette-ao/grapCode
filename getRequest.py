@@ -36,8 +36,6 @@ def simple_get_request_with_cookie(url, cookie_value, data=None):
         
         # 检查响应状态码
         if response.status_code == 200:
-        #    print("请求成功！")  
-        #    print(f"原始响应:\n{response.text}")  # 打印前500字符
            if(response.text): 
              return response.text
            else:

@@ -161,15 +161,20 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
 
     def _calculate_final_date(self, base_time: datetime, status: str) -> str:
         """
+        base_time:日志中最后一条记录的日期时间
+        status:SUCCESS或者ERROR
+
         如果成功下载的date日期的文章，那么下一次再执行时，就应该将开始日期设置为date+1
         如果下载date日期的文章时出现了访问过于频繁的错误，则下一次再执行时，
         就应该将开始日期设置为date
 
         date格式为%Y%m%d
         """
-        print("status",status)
+        if self._format_date(base_time) == self.get_date_of_today():
+            return self._format_date(base_time)
+
         delta_days = 1 if "SUCCESS" in status else 0
-        print("delta_days",delta_days)
+
         return self._format_date(base_time + timedelta(days=delta_days))
 
     def get_date_of_today(self) -> str:
