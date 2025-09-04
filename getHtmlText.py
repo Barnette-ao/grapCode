@@ -290,8 +290,13 @@ def batched_download_article_by_date():
 
             break; # 全部日期正常下载完
         except AccessLimitError as e:
-            print(f"[ERROR] 触发接口限流:暂停20分钟")
-            time.sleep(20 * 60)  # 等待20 * 60秒后重试
+            reason = str(e)
+            if reason == "访问过于频繁":
+                print(f"[ERROR] 触发接口限流:暂停20分钟")
+                time.sleep(20 * 60)  # 等待20 * 60秒后重试
+            elif reason == "访问量用完":
+                print(f"[ERROR] 访问量用完:暂停执行")
+                break
 
 if __name__ == "__main__":
     # date = "20250826"
