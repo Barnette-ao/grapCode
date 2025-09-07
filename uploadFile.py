@@ -24,7 +24,7 @@ def get_category_data(cookie_value):
     准备表单数据
     """
     # 获取所有类别的编号
-    category_tree=simple_get_request_with_cookie(
+    category_tree = simple_get_request_with_cookie(
         url="http://211.154.30.100:8222/base/category/treeData",
         cookie_value=cookie_value
     )
@@ -39,14 +39,15 @@ def get_category_data(cookie_value):
         }
     ]
     """
-    category_data = [
-        { 
-            "id": item['id'],
-            "pid": item['pId'],
-            "name": item['name'] 
-        }
-        for item in json.loads(category_tree)
-    ]
+    if category_tree:
+        category_data = [
+            { 
+                "id": item['id'],
+                "pid": item['pId'],
+                "name": item['name'] 
+            }
+            for item in json.loads(category_tree)  
+        ]
     return category_data
 
 
@@ -127,7 +128,9 @@ def upload_by_chunks(root_dir,cookie_value):
                 continue
    
             params = get_categoryId_with_parentId(path_chunk[0],category_data_tuple,cookie_value)
-
+            if not params:
+                continue
+            
             response = postRequest_with_formdata(
                 postUrl="http://211.154.30.100:8222/base/resource/uploadMutiAPI2",
                 cookie_value=cookie_value,
@@ -135,7 +138,7 @@ def upload_by_chunks(root_dir,cookie_value):
                 form_data=FormData(*params).to_dict()
             )
 
-            if response['msg'] != '操作成功':
+            if response and response['msg'] != '操作成功':
                 print("上传失败")
             else:
                 print("上传成功")

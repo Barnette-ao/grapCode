@@ -109,10 +109,6 @@ def test_download_single_pdf():
 
 
 
-if __name__ == "__main__":
-   print(is_exist_in_gongwenwang(
-    cookie_value = "Hm_lvt_1f013c54a127ce2677327e03b2f2dcaf=1752462376; gws_keeplogin=CQ4EBAxXCQBKAwwBAxcMAQlJAwUACQUFSQQCAAYFAwIADQBJBVBXBAtUDAYFAgdQUgwEUlMHVFdaUFZRAF0HAFFRBAwTCg___c___c; PHPSESSID=v966cok4relipmqlo5kc2j5mls; breadcrumb_0=; menu_0=[{%22title%22:%22%E6%96%87%E7%AB%A0%E7%AE%A1%E7%90%86%22%2C%22url%22:%22https://wx.06179.com/article/article/init.html%22%2C%22fullurl%22:%22https://wx.06179.com/article/article/init.html%22}]"
-   ,queryData = { "sort": "", "order": "", "limit": 20, "page": 1, "title": "在单身青年联谊会上的致辞：以爱搭桥促良缘，携手同行谱新篇"}
-   ))
+
     
 

@@ -304,17 +304,17 @@ def load_article_links_by(date):
 
 
 Category = Dict[str, Any]
-Path = List[str]
 def walk_tree(
     nodes: List[Category],
-    path: Path | None = None,
+    path: List[str] | None = None,
     level: int = 1,
     max_count: int = 100
-) -> Iterator[Tuple[Category, Path]]:
+) -> Iterator[Tuple[Category, List[str]]]:
     """
     深度优先遍历
     :yield: (叶子节点, 从根到叶子的分类路径)
     """
+    # 1. 初始化路径
     path = path or []
 
     for node in nodes:

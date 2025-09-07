@@ -91,7 +91,7 @@ def get_all_article_links(date, cookie_str):
     safe_extend(all_article_links, article_links_by_page)
 
     # 4. page > 1 的情况,分别遍历每一页，找到每一页的文章链接并安全加入all_article_links
-    if max_page > 1:
+    if max_page and max_page > 1:
         for page in range(2, max_page + 1):
             html_text = get_html_text(date, cookie_str, page)
             if not html_text:
@@ -165,6 +165,8 @@ def is_exist_in_gongwenwang(keyword, gongwen_cookie_value):
     )
 
     # print("response",response)
+    if not response:
+        return False
     return extract_keyword_match_number_bs4(response) > 0
 
 
@@ -243,6 +245,10 @@ def download_article_by_date(gwsxwk_cookie_str, date, gongwen_cookie):
 
     print("article_links",article_links)
 
+    if not article_links:
+        print(f"[ERROR] 没有文章链接: {date}")
+        return
+
     try:
         # 3. 遍历该date下每一篇文章链接字典元素
         for article_link in article_links:
@@ -297,6 +303,7 @@ def batched_download_article_by_date():
             elif reason == "访问量用完":
                 print(f"[ERROR] 访问量用完:暂停执行")
                 break
+
 
 if __name__ == "__main__":
     # date = "20250826"

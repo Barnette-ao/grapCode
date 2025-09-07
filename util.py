@@ -119,7 +119,7 @@ def get_detail_category(cookie_value, categoryId, thirdcategory, isVersion=False
             "filterDetailName": item['filterDetailName'],
             "filterDetailCode": item['filterDetailCode'] 
         }
-        for item in json.loads(sub_category_list)
+        for item in json.loads(sub_category_list) 
     ]
     # print("sub_category_data",sub_category_data)
 

@@ -51,7 +51,10 @@ def getContentList():
 
 def normalize_content_list():
     contentList = getContentList()
-    return [x for x in contentList if x.get("children", [])]
+    if not contentList:
+        return []
+    else: 
+        return [x for x in contentList if x and x.get("children", [])]
 
 # normalize_content_list()
 # print(json.dumps(normalize_content_list(), indent=4, ensure_ascii=False))

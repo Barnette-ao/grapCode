@@ -32,7 +32,7 @@ class TimeThresholdExtractor:
         
         # 统一转换为 datetime 对象
         if isinstance(time, str):
-            dt = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
+            dt:datetime = datetime.strptime(time, "%Y-%m-%d %H:%M:%S")
         elif isinstance(time, datetime):
             dt = time
         else:
@@ -118,7 +118,7 @@ class GwsxwkTimeExtractor(TimeThresholdExtractor):
         content = self._safe_read_log()
         # print("content",content)
         if not content:
-            return None,None
+            return None, None
 
         # 匹配格式：
         # "[SUCCESS] 下载20250102的文件时正常退出",或者

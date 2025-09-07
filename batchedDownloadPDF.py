@@ -43,9 +43,17 @@ def set_queryData_of_pdf(resource,token):
         plat_form = "mp-weixin"
     )
 
-def download(postUrl,queryData,firstcategory,secondcategory,thirdcategory='',fourthcategory='' ):
+def download(postUrl,queryData, *cat , fourthcategory):
     response = postRequest(postUrl, queryData)
-    # print(json.dumps(response, indent=4, ensure_ascii=False))
+
+    if not response:
+        print("response有问题")
+        return
+
+    
+    firstcategory,secondcategory,thirdcategory = (list(cat) + [""] * 3)[:3]
+  
+
     if response['code'] == 200:
         url = response['data']['link']
         file_ext = os.path.splitext(url)[1] # 获取文件扩展名 例如 .pdf
@@ -109,10 +117,10 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
             time.sleep(60)  # 暂停 1 分钟
             count = 0  # 重置计数器
         
-        first, *rest = path
-
         # 如果是幼小衔接，那么下载时只需要一级分类和二级分类
         # 其他分类则需要一级分类、二级分类、三级分类、四级分类
+        first, *rest = path
+
         # fold_path作为download函数的动态参数容器
         folder_path = [rest[1],rest[2]] if first == '幼小衔接' else path
 
@@ -148,8 +156,8 @@ def download_resources_by_category(content_list, auth_token, threshold_ctime):
             download(
                 API_URL_RESOURCE_ITEM,
                 pdf_query,
-                *cats,  # 如果不是幼小衔接就是前三级目录否则是一级目录
-                item_name   # 如果不是幼小衔接就是四级分类名否则就是二级目录
+                *cats,
+                fourthcategory = item_name
             )
 
        
